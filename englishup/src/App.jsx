@@ -988,7 +988,12 @@ export default function App(){
             {!sub&&<>
               <h2 style={{color:C.tx,fontSize:20,fontWeight:800,marginBottom:4}}>Ejercicios del día</h2>
               <p style={{color:C.mu,fontSize:13,marginBottom:4}}>Generados hoy por IA · Adaptados a tu nivel {lv}</p>
-              {st.dailyContent?.date&&<p style={{color:C.vi,fontSize:11,fontWeight:600,marginBottom:16}}>🤖 Contenido del {new Date(st.dailyContent.date+"T12:00:00").toLocaleDateString("es",{{day:"numeric",month:"long"}})}</p>}
+             {st.dailyContent?.date && (
+              <p style={{color:C.vi,fontSize:11,fontWeight:600,marginBottom:16}}>
+                🤖 Contenido del {new Date(st.dailyContent.date+"T12:00:00")
+                  .toLocaleDateString("es",{day:"numeric",month:"long"})}
+              </p>
+            )}
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
                 {[
                   {m:"flash",ic:"🃏",tt:"Flashcards",           ds:`${flashSt.deck.length} palabras · Progreso guardado · Nuevas palabras automáticas con IA`,co:C.vi},
