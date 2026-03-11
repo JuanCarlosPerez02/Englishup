@@ -91,52 +91,7 @@ const CARDS={
   ],
 };
 
-const BLANKS_BASE=[
-  {s:"I ___ to the gym three times a week.",       ops:["go","goes","went","going"],             ans:0,exp:"Presente simple con 'I': forma base. Con she/he/it → 'she goes'.",tipo:"Gramática",nivel:"A2"},
-  {s:"She ___ already eaten lunch.",               ops:["have","has","had","is"],                ans:1,exp:"Present Perfect: 'has' con she/he/it. 'Have' con I/you/we/they.",tipo:"Gramática",nivel:"A2"},
-  {s:"They ___ football yesterday.",               ops:["play","plays","played","playing"],      ans:2,exp:"'Yesterday' indica pasado → Past Simple: 'played'.",tipo:"Gramática",nivel:"A2"},
-  {s:"___ you help me with this, please?",         ops:["Can","Could","Would","Should"],         ans:1,exp:"'Could' es más educado que 'can'. Úsalo al pedir un favor.",tipo:"Gramática",nivel:"A2"},
-  {s:"I ___ TV when my phone rang.",               ops:["watch","watched","was watching","am watching"],ans:2,exp:"Past Continuous: acción en progreso interrumpida. 'was/were + -ing'.",tipo:"Gramática",nivel:"A2"},
-  {s:"Can I have the ___ for my purchase?",        ops:["recipe","receipt","receive","record"],  ans:1,exp:"'Receipt' = recibo/ticket. No confundir con 'recipe' (receta).",tipo:"Vocabulario",nivel:"A2"},
-  {s:"Let me check my ___. I'm free at 3pm.",      ops:["schedule","school","scheme","scale"],   ans:0,exp:"'Schedule' = horario/agenda. Muy usado en inglés de negocios.",tipo:"Vocabulario",nivel:"A2"},
-  {s:"If I ___ you, I would apologise.",           ops:["am","was","were","be"],                 ans:2,exp:"2º condicional: usamos 'were' para todas las personas.",tipo:"Gramática",nivel:"B1"},
-  {s:"The package ___ delivered yesterday.",       ops:["was","were","had","is"],                ans:0,exp:"Voz pasiva en pasado: was/were + participio. Singular → 'was'.",tipo:"Gramática",nivel:"B1"},
-  {s:"She suggested ___ a break.",                 ops:["take","to take","taking","took"],       ans:2,exp:"'Suggest' va seguido de gerundio (-ing).",tipo:"Gramática",nivel:"B1"},
-  {s:"I've worked here ___ 2019.",                 ops:["for","since","from","during"],          ans:1,exp:"'Since' + punto concreto. 'For' + duración (for 3 years).",tipo:"Gramática",nivel:"B1"},
-  {s:"He said he ___ tired.",                      ops:["is","was","were","be"],                 ans:1,exp:"Estilo indirecto: el verbo retrocede. 'is' → 'was'.",tipo:"Gramática",nivel:"B1"},
-  {s:"The meeting was ___.",                       ops:["called off","called up","called in","called on"],ans:0,exp:"'Call off' = cancelar.",tipo:"Vocabulario",nivel:"B1"},
-  {s:"I can't ___ why it stopped working.",        ops:["figure out","figure in","figure up","figure off"],ans:0,exp:"'Figure out' = entender/resolver algo.",tipo:"Vocabulario",nivel:"B1"},
-  {s:"___ have I seen such a problem.",            ops:["Ever","Rarely","Sometimes","Often"],    ans:1,exp:"Inversión después de adverbios negativos: Rarely, Never...",tipo:"Gramática",nivel:"B2"},
-  {s:"It is widely ___ that exercise helps.",      ops:["believed","believing","believe","to believe"],ans:0,exp:"Pasiva impersonal: 'It is + participio + that...'.",tipo:"Gramática",nivel:"B2"},
-  {s:"___ she finished, she went home.",           ops:["As soon as","Despite","Although","However"],ans:0,exp:"'As soon as' = en cuanto / tan pronto como.",tipo:"Gramática",nivel:"B2"},
-  {s:"The findings ___ further research.",         ops:["warrant","warrants","warranting","warranted"],ans:0,exp:"'Findings' es plural → verbo plural: 'warrant'.",tipo:"Vocabulario",nivel:"B2"},
-  {s:"Her ___ speech inspired the whole team.",    ops:["eloquent","elegant","elusive","elaborate"],ans:0,exp:"'Eloquent' = elocuente, fluido y persuasivo.",tipo:"Vocabulario",nivel:"B2"},
-  {s:"We need to ___ the risks before proceeding.",ops:["mitigate","migrate","motivate","mediate"],ans:0,exp:"'Mitigate' = mitigar, reducir la gravedad de algo.",tipo:"Vocabulario",nivel:"B2"},
-];
 
-const FRASES_ESCRITURA={
-  A2:[
-    {es:"Fui al supermercado ayer por la tarde.",hint:"Past Simple de 'go'. Recuerda que 'yesterday afternoon' va al final."},
-    {es:"¿Puedes hablar más despacio, por favor?",hint:"Usa 'Could you...' para ser educado."},
-    {es:"Ella ya ha comido, no tiene hambre.",hint:"Present Perfect: she has already..."},
-    {es:"Normalmente me despierto a las 7, pero hoy me desperté a las 9.",hint:"Present Simple vs Past Simple."},
-    {es:"¿Tienes planes para el fin de semana?",hint:"'Do you have plans for...' o 'Are you free...?'"},
-  ],
-  B1:[
-    {es:"Si tuviera más dinero, viajaría por todo el mundo.",hint:"2º condicional: If I had... I would..."},
-    {es:"Le dije que llegaría tarde a la reunión.",hint:"Reported speech: I told him I would..."},
-    {es:"El partido fue cancelado debido a la lluvia.",hint:"Pasiva + phrasal verb: The match was called off..."},
-    {es:"Llevo trabajando aquí desde 2020.",hint:"Present Perfect Continuous: I have been working here since..."},
-    {es:"Sugirió tomar un descanso de 10 minutos.",hint:"suggest + -ing"},
-  ],
-  B2:[
-    {es:"Jamás había visto tanta dedicación en mi vida.",hint:"Inversion: Never had I..."},
-    {es:"Se cree ampliamente que el ejercicio mejora la salud mental.",hint:"Impersonal passive: It is widely believed that..."},
-    {es:"A pesar de estar agotada, terminó el proyecto a tiempo.",hint:"Despite + -ing / Despite being..."},
-    {es:"Los resultados justifican una investigación más exhaustiva.",hint:"'warrant' = justificar. Subjects agree with verb."},
-    {es:"Su discurso elocuente inspiró a todo el equipo.",hint:"Vocabulary: eloquent, inspire. Word order."},
-  ],
-};
 
 const WORDS=[
   {w:"Resilient", ph:"/rɪˈzɪliənt/", es:"Resistente; que se recupera rápido de las dificultades.",ej:"She is incredibly resilient — nothing keeps her down.",niv:"B2"},
@@ -161,15 +116,127 @@ function Cd({children,st={},fn}){const[hv,sHv]=useState(false);return <div onCli
 function Inp({label,type="text",value,onChange,placeholder,error}){return(<div style={{marginBottom:16}}>{label&&<label style={{display:"block",color:C.mu,fontSize:12,fontWeight:700,marginBottom:6,letterSpacing:.5}}>{label}</label>}<input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{width:"100%",background:C.c2,border:`1px solid ${error?C.re:C.bd}`,borderRadius:10,padding:"12px 14px",color:C.tx,fontSize:14,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>{error&&<p style={{color:C.re,fontSize:12,marginTop:4}}>{error}</p>}</div>);}
 
 /* ─────────────────────────────────────────────
-   LLAMADA IA
+   IA — llamada central
 ───────────────────────────────────────────── */
-async function callIA(system,userMsg,maxTokens=1200){
+async function callIA(system, userMsg, maxTokens=1200){
   try{
-    const r=await fetch("/.netlify/functions/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({system,messages:[{role:"user",content:userMsg}],max_tokens:maxTokens})});
+    const r=await fetch("/.netlify/functions/claude",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({system,messages:[{role:"user",content:userMsg}],max_tokens:maxTokens})
+    });
     const d=await r.json();
     return d.content?.map(b=>b.text||"").join("")||"";
   }catch(e){return "";}
 }
+
+function parseJSON(raw){
+  try{
+    const clean=raw.replace(/```json
+?/g,"").replace(/```
+?/g,"").trim();
+    return JSON.parse(clean);
+  }catch(e){return null;}
+}
+
+/* ─────────────────────────────────────────────
+   GENERACIÓN DIARIA CON IA
+   Genera flashcards + huecos + escritura de una
+   vez. Se cachea por día+nivel en Supabase.
+   Los prompts tienen en cuenta tus puntos débiles.
+───────────────────────────────────────────── */
+
+function buildWeaknessNote(stats){
+  const areas=[];
+  const pct=(ok,tot)=>tot>0?Math.round(ok/tot*100):100;
+  if(pct(stats.gramatica,stats.gramaticaTotal)<60) areas.push("gramática");
+  if(pct(stats.vocabulario,stats.vocabularioTotal)<60) areas.push("vocabulario");
+  if(pct(stats.escritura,stats.escrituraTotal)<60) areas.push("escritura/traducción");
+  return areas.length
+    ? `IMPORTANT: The student struggles with ${areas.join(" and ")}. Weight exercises toward these areas.`
+    : "The student has balanced skills across areas.";
+}
+
+const LEVEL_CONTEXT={
+  A2:`Level A2 (Elementary). Topics: present simple/continuous, past simple, going to/will future, present perfect basics, modal verbs (can/could/should), everyday vocabulary (shopping, transport, work, health), common phrases.`,
+  B1:`Level B1 (Intermediate). Topics: all perfect tenses, conditionals (1st & 2nd), passive voice, reported speech, phrasal verbs, linking words (however/therefore/furthermore), B1 vocabulary (mandatory, consequently, overwhelmed, figure out, hesitant).`,
+  B2:`Level B2 (Upper-Intermediate). Topics: 3rd conditional & mixed conditionals, advanced passives (it is believed/said/thought), inversion (never have I / not only), academic vocabulary (mitigate, eloquent, paradigm shift, resilient, meticulous), formal writing structures, nuanced expressions.`
+};
+
+async function generateDailyContent(lv, stats){
+  const lvCtx=LEVEL_CONTEXT[lv]||LEVEL_CONTEXT.A2;
+  const weakness=buildWeaknessNote(stats||{});
+  const today=new Date().toLocaleDateString("es",{weekday:"long",day:"numeric",month:"long"});
+
+  const SYSTEM=`You are an expert English teacher for Spanish speakers. You create daily exercises.
+RULES:
+- All explanations, definitions, and hints in SPANISH
+- English examples and sentences in English
+- JSON only, no markdown, no backticks, no extra text
+- Vary topics daily (today: ${today})
+- ${weakness}
+- Context: ${lvCtx}`;
+
+  // ── Flashcards: 8 words ──────────────────────
+  const flashPrompt=`Generate 8 English vocabulary flashcards for level ${lv}. 
+Mix: 4 common words + 2 collocations + 2 phrasal verbs or idioms appropriate for the level.
+Avoid very basic words (good, house, eat).
+
+Respond ONLY with this JSON array:
+[{"f":"word or phrase","b":"(grammatical type) Clear definition in Spanish.\n\n'Example sentence in English.'\n→ Spanish translation of the example."}]`;
+
+  // ── Fill in the blanks: 15 exercises ────────
+  const blanksPrompt=`Generate 15 fill-in-the-blank English exercises for level ${lv}.
+Mix: 8 grammar + 7 vocabulary. Each has exactly 4 options, only 1 correct.
+Make sentences realistic (work, daily life, travel, technology contexts).
+
+Respond ONLY with this JSON array:
+[{"s":"Sentence with ___ here.","ops":["a","b","c","d"],"ans":0,"exp":"Explanation in Spanish of WHY this is correct and what the wrong options mean.","tipo":"Gramática","nivel":"${lv}"}]`;
+
+  // ── Writing / translation: 5 sentences ──────
+  const writingPrompt=`Generate 5 Spanish sentences for a ${lv} student to translate into English.
+Progress from easier to harder. Include realistic daily situations.
+
+Respond ONLY with this JSON array:
+[{"es":"Spanish sentence to translate.","hint":"Key grammar point or vocabulary hint in Spanish. Example: 'Usa el Present Perfect: have/has + participio.'"}]`;
+
+  // Launch all 3 in parallel
+  const [flashRaw, blanksRaw, writingRaw] = await Promise.all([
+    callIA(SYSTEM, flashPrompt, 1200),
+    callIA(SYSTEM, blanksPrompt, 2500),
+    callIA(SYSTEM, writingPrompt, 800),
+  ]);
+
+  const flashcards = parseJSON(flashRaw);
+  const blanks     = parseJSON(blanksRaw);
+  const writing    = parseJSON(writingRaw);
+
+  return {
+    date: new Date().toISOString().slice(0,10),
+    lv,
+    flashcards: Array.isArray(flashcards) && flashcards.length>=4 ? flashcards : null,
+    blanks:     Array.isArray(blanks)     && blanks.length>=8     ? blanks     : null,
+    writing:    Array.isArray(writing)    && writing.length>=3    ? writing    : null,
+  };
+}
+
+// Fallback content (used only if AI fails)
+const FB_CARDS={
+  A2:[{f:"appointment",b:"(sustantivo) Cita o reunión.\n\n'I have a doctor\'s appointment at 3pm.'\n→ Tengo cita a las 3."},{f:"commute",b:"(sustantivo) Trayecto al trabajo.\n\n'My commute takes 45 minutes.'\n→ Mi trayecto dura 45 min."},{f:"purchase",b:"(verbo) Comprar (formal).\n\n'You can purchase tickets online.'\n→ Puedes comprar entradas online."},{f:"schedule",b:"(sustantivo) Horario/agenda.\n\n'Let me check my schedule.'\n→ Déjame revisar mi agenda."},{f:"deadline",b:"(sustantivo) Fecha límite.\n\n'The deadline is Friday.'\n→ El plazo es el viernes."},{f:"look forward to",b:"(expresión) Tener ganas de algo.\n\n'I look forward to seeing you.'\n→ Tengo ganas de verte."},{f:"run out of",b:"(phrasal verb) Quedarse sin.\n\n'We ran out of milk.'\n→ Se nos acabó la leche."},{f:"come across",b:"(phrasal verb) Encontrarse con algo/alguien por casualidad.\n\n'I came across an old photo.'\n→ Me encontré con una foto antigua."}],
+  B1:[{f:"mandatory",b:"(adjetivo) Obligatorio.\n\n'Attendance is mandatory.'\n→ La asistencia es obligatoria."},{f:"figure out",b:"(phrasal verb) Resolver/entender.\n\n'I can\'t figure out this problem.'\n→ No consigo resolver este problema."},{f:"overwhelmed",b:"(adjetivo) Desbordado/a.\n\n'She felt overwhelmed by her workload.'\n→ Estaba desbordada."},{f:"consequently",b:"(conector) Por tanto.\n\n'He didn\'t study. Consequently, he failed.'\n→ No estudió. Por tanto, suspendió."},{f:"call off",b:"(phrasal verb) Cancelar.\n\n'The match was called off.'\n→ El partido fue cancelado."},{f:"be used to",b:"(expresión) Estar acostumbrado a.\n\n'I\'m used to waking up early.'\n→ Estoy acostumbrado a madrugar."},{f:"put up with",b:"(phrasal verb) Aguantar/tolerar.\n\n'I can\'t put up with this noise.'\n→ No aguanto este ruido."},{f:"in spite of",b:"(preposición) A pesar de.\n\n'In spite of the rain, we went out.'\n→ A pesar de la lluvia, salimos."}],
+  B2:[{f:"resilient",b:"(adjetivo) Resistente.\n\n'Children are remarkably resilient.'\n→ Los niños son sorprendentemente resistentes."},{f:"meticulous",b:"(adjetivo) Meticuloso/a.\n\n'Her meticulous work impressed everyone.'\n→ Su trabajo meticuloso impresionó a todos."},{f:"mitigate",b:"(verbo) Mitigar.\n\n'We must mitigate the risks.'\n→ Debemos mitigar los riesgos."},{f:"eloquent",b:"(adjetivo) Elocuente.\n\n'He gave an eloquent speech.'\n→ Dio un discurso elocuente."},{f:"paradigm shift",b:"(locución) Cambio de paradigma.\n\n'AI represents a paradigm shift.'\n→ La IA representa un cambio de paradigma."},{f:"cut corners",b:"(expresión) Hacer las cosas a medias.\n\n'They cut corners to save time.'\n→ Hicieron las cosas a medias para ahorrar tiempo."},{f:"far-fetched",b:"(adjetivo) Inverosímil/rebuscado.\n\n'That explanation seems far-fetched.'\n→ Esa explicación parece rebuscada."},{f:"ambiguous",b:"(adjetivo) Ambiguo/a.\n\n'The instructions were ambiguous.'\n→ Las instrucciones eran ambiguas."}]
+};
+const FB_BLANKS=[
+  {s:"She ___ already finished her homework.",ops:["have","has","had","is"],ans:1,exp:"Present Perfect con she/he/it → 'has'. Con I/you/we/they → 'have'.",tipo:"Gramática",nivel:"A2"},
+  {s:"If I ___ more time, I would travel more.",ops:["have","had","will have","would have"],ans:1,exp:"2º condicional: If + past simple (had). El resultado usa 'would + infinitivo'.",tipo:"Gramática",nivel:"B1"},
+  {s:"The report ___ by the manager last week.",ops:["wrote","is written","was written","has written"],ans:2,exp:"Pasiva en pasado: was/were + participio. 'last week' indica pasado simple.",tipo:"Gramática",nivel:"B1"},
+  {s:"___ have I seen such dedication.",ops:["Ever","Rarely","Sometimes","Often"],ans:1,exp:"Inversión formal tras adverbios negativos: Rarely/Never/Seldom + auxiliar + sujeto.",tipo:"Gramática",nivel:"B2"},
+  {s:"Can I have the ___ for my purchase?",ops:["recipe","receipt","receive","record"],ans:1,exp:"'Receipt' = recibo/ticket de compra. No confundir con 'recipe' (receta de cocina).",tipo:"Vocabulario",nivel:"A2"},
+];
+const FB_WRITING={
+  A2:[{es:"Fui al supermercado ayer por la tarde.",hint:"Past Simple de 'go' → went. 'Yesterday afternoon' va al final."},{es:"¿Puedes hablar más despacio, por favor?",hint:"Usa 'Could you speak more slowly?' — más educado que 'Can you'."},{es:"Ella ya ha comido, no tiene hambre.",hint:"Present Perfect: she has already eaten."},{es:"¿Tienes planes para el fin de semana?",hint:"'Do you have plans for the weekend?' o 'Are you free this weekend?'"},{es:"Normalmente me levanto a las 7, pero hoy a las 9.",hint:"Presente simple vs pasado simple. 'Usually I wake up... but today I woke up...'"}],
+  B1:[{es:"Si tuviera más dinero, viajaría por todo el mundo.",hint:"2º condicional: If I had... I would travel..."},{es:"Le dije que llegaría tarde a la reunión.",hint:"Reported speech: I told him (that) I would be late..."},{es:"El partido fue cancelado debido a la lluvia.",hint:"Pasiva + phrasal verb: The match was called off due to the rain."},{es:"Llevo trabajando aquí desde 2020.",hint:"Present Perfect Continuous: I have been working here since 2020."},{es:"Sugirió tomar un descanso de 10 minutos.",hint:"'Suggest' + gerundio: She suggested taking a break."}],
+  B2:[{es:"Jamás había visto tanta dedicación en mi vida.",hint:"Inversion: Never had I seen such dedication in my life."},{es:"Se cree ampliamente que el ejercicio mejora la salud mental.",hint:"Impersonal passive: It is widely believed that exercise improves..."},{es:"A pesar de estar agotada, terminó el proyecto a tiempo.",hint:"Despite + gerundio: Despite being exhausted, she finished..."},{es:"Los resultados justifican una investigación más exhaustiva.",hint:"'warrant' = justificar/merecer. The results warrant further research."},{es:"Su elocuente discurso inspiró a todo el equipo.",hint:"Word order: His/Her eloquent speech inspired the whole team."}]
+};
 
 /* ─────────────────────────────────────────────
    AUTH SCREEN
@@ -435,28 +502,30 @@ function Flash({lv, flashSt, setFlashSt, onXP}){
   );
 }
 
-// Función externa para generar nuevas tarjetas con IA
+// Genera un nuevo mazo de flashcards con IA (después de completar el actual)
 async function generarNuevas(currentDeck, unIndices, lv, upFlash, onXP){
   upFlash({generando:true});
   const yaVistas=currentDeck.map(c=>c.f).join(", ");
-  const resp=await callIA(
-    "Eres un generador de flashcards de inglés. Responde SOLO con JSON válido, sin texto adicional ni backticks.",
-    `Genera 6 flashcards de vocabulario en inglés para nivel ${lv}, distintas a estas ya vistas: ${yaVistas}.
-Responde ONLY con este array JSON (sin \`\`\`):
-[{"f":"palabra","b":"(tipo gramatical) Definición clara en español.\\n\\n'Ejemplo en inglés.'\\n→ Traducción al español."}]`,
-    900
-  );
-  let newDeck=null;
-  try{
-    const clean=resp.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
-    const parsed=JSON.parse(clean);
-    if(Array.isArray(parsed)&&parsed.length>0) newDeck=parsed;
-  }catch(e){}
+  const lvCtx=LEVEL_CONTEXT[lv]||LEVEL_CONTEXT.A2;
 
-  if(!newDeck){
-    // Si la IA falla, mezclar el mazo original
-    newDeck=[...(CARDS[lv]||[])].sort(()=>Math.random()-.5);
-  }
+  const resp=await callIA(
+    `You are an English vocabulary flashcard generator for Spanish speakers.
+RULES: JSON only, no markdown, no backticks.
+Context: ${lvCtx}`,
+    `Generate 8 English vocabulary flashcards for level ${lv}.
+These words have already been seen — do NOT repeat them: ${yaVistas}.
+Include: practical nouns, verbs, adjectives, collocations, or phrasal verbs appropriate for ${lv}.
+Avoid overly simple words.
+
+Respond ONLY with JSON array:
+[{"f":"word or phrase","b":"(grammatical type) Definition in Spanish.\n\n'Example in English.'\n→ Spanish translation."}]`,
+    1200
+  );
+
+  const parsed=parseJSON(resp);
+  const newDeck=(Array.isArray(parsed)&&parsed.length>=4)
+    ? parsed
+    : [...(FB_CARDS[lv]||FB_CARDS.A2)].sort(()=>Math.random()-.5);
 
   upFlash({deck:newDeck,i:0,fl:false,kn:[],un:[],fase:"normal",repasoQ:[],riIdx:0,riKn:[],riUn:[],generando:false});
   if(onXP) onXP(10);
@@ -465,23 +534,31 @@ Responde ONLY con este array JSON (sin \`\`\`):
 /* ─────────────────────────────────────────────
    RELLENA EL HUECO — ADAPTATIVO
 ───────────────────────────────────────────── */
-async function generarPreguntasIA(lv,errores){
+async function generarPreguntasIA(lv, errores, prevBlanks){
+  const lvCtx=LEVEL_CONTEXT[lv]||LEVEL_CONTEXT.A2;
   const errorDesc=errores.length>0
-    ?`El estudiante cometió errores en: ${errores.map(e=>`"${e.tipo} ${e.nivel}: ${e.frase}"`).join(", ")}.`
-    :"El estudiante no tuvo errores notables.";
+    ?`The student made errors in: ${errores.map(e=>`"${e.tipo} (${e.nivel}): ${e.frase}"`).join("; ")}.`
+    :"The student had no major errors.";
+  const prevWords=(prevBlanks||[]).map(b=>b.s.slice(0,30)).join(" | ");
   const resp=await callIA(
-    "Eres un generador de ejercicios de inglés. Responde SOLO con JSON válido.",
-    `${errorDesc} Nivel: ${lv}. Genera exactamente 20 preguntas "rellena el hueco".
-Responde SOLO con array JSON:
-[{"s":"frase con ___","ops":["a","b","c","d"],"ans":0,"exp":"Explicación en español.","tipo":"Gramática","nivel":"A2"}]`,
-    3000
+    `You are an adaptive English exercise generator for Spanish speakers.
+${errorDesc}
+Focus the next set heavily on the student's weak areas.
+Context: ${lvCtx}
+RULES: JSON only, no markdown. All explanations in Spanish. Sentences must be different from: ${prevWords}`,
+    `Generate exactly 15 adaptive fill-in-the-blank exercises for level ${lv}.
+Mix grammar and vocabulary. Sentences should reflect realistic daily/work/travel situations.
+Respond ONLY with JSON array:
+[{"s":"Sentence with ___ here.","ops":["a","b","c","d"],"ans":0,"exp":"Spanish explanation of why this is correct and what the wrong options mean.","tipo":"Gramática","nivel":"${lv}"}]`,
+    2500
   );
-  try{const clean=resp.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();const p=JSON.parse(clean);if(Array.isArray(p)&&p.length>=10)return p.slice(0,20);}catch(e){}
+  const parsed=parseJSON(resp);
+  if(Array.isArray(parsed)&&parsed.length>=8) return parsed.slice(0,15);
   return null;
 }
 
-function Blanks({lv,onXP,onStats}){
-  const[preguntas,setPreguntas]=useState(BLANKS_BASE);
+function Blanks({lv,dailyBlanks,onXP,onStats}){
+  const[preguntas,setPreguntas]=useState(()=>dailyBlanks||FB_BLANKS);
   const[tanda,setTanda]=useState(1);
   const[cargando,setCargando]=useState(false);
   const[i,si]=useState(0);
@@ -496,8 +573,8 @@ function Blanks({lv,onXP,onStats}){
   async function siguienteTanda(){
     setCargando(true);sf(false);si(0);ss(null);sc(false);sk(0);
     const errores=hist.filter(h=>!h.correcto);
-    const nuevas=await generarPreguntasIA(lv,errores);
-    setPreguntas(nuevas||[...BLANKS_BASE].sort(()=>Math.random()-.5));
+    const nuevas=await generarPreguntasIA(lv,errores,dailyBlanks);
+    setPreguntas(nuevas||[...(dailyBlanks||FB_BLANKS)].sort(()=>Math.random()-.5));
     setTanda(t=>t+1);setHist([]);setCargando(false);
   }
   if(cargando)return(<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:48,marginBottom:16}}>🤖</div><h3 style={{color:C.tx,fontSize:18,fontWeight:800,marginBottom:8}}>Preparando siguiente tanda…</h3><p style={{color:C.mu,fontSize:14}}>La IA analiza tus respuestas.</p></div>);
@@ -555,8 +632,8 @@ function Blanks({lv,onXP,onStats}){
 /* ─────────────────────────────────────────────
    ESCRITURA
 ───────────────────────────────────────────── */
-function Escritura({lv,onXP,onStats}){
-  const frases=FRASES_ESCRITURA[lv]||FRASES_ESCRITURA.A2;
+function Escritura({lv,dailyWriting,onXP,onStats}){
+  const frases=dailyWriting||(FB_WRITING[lv]||FB_WRITING.A2);
   const[i,si]=useState(0);const[input,setInput]=useState("");const[resultado,setResultado]=useState(null);const[loading,setLoading]=useState(false);const[done,setDone]=useState(false);const[puntos,setPuntos]=useState(0);
   const frase=frases[i];const last=i===frases.length-1;
   async function corregir(){
@@ -650,15 +727,50 @@ function Racha({dias}){
 /* ─────────────────────────────────────────────
    ESTADO INICIAL DE FLASHCARDS
 ───────────────────────────────────────────── */
-function initFlashSt(lv){
-  return {deck:CARDS[lv]||[],i:0,fl:false,kn:[],un:[],fase:"normal",repasoQ:[],riIdx:0,riKn:[],riUn:[],generando:false};
+function initFlashSt(deck){
+  return {deck:deck||[],i:0,fl:false,kn:[],un:[],fase:"normal",repasoQ:[],riIdx:0,riKn:[],riUn:[],generando:false};
+}
+
+/* ─────────────────────────────────────────────
+   REFRESH DAILY CONTENT
+   Checks if today's AI content exists for the
+   current level. If not, generates everything.
+───────────────────────────────────────────── */
+async function refreshDailyContent(currentSt, lv, setSt, setFlashSt, setGenerating){
+  const today=new Date().toISOString().slice(0,10);
+  const dc=currentSt.dailyContent;
+
+  // Already have today's content for this level
+  if(dc && dc.date===today && dc.lv===lv && dc.flashcards && dc.blanks && dc.writing){
+    setFlashSt(initFlashSt(dc.flashcards));
+    return;
+  }
+
+  // Need to generate
+  setGenerating(true);
+  const result=await generateDailyContent(lv, currentSt.stats||{});
+
+  // Use AI result or fallback for each section
+  const finalContent={
+    date: today,
+    lv,
+    flashcards: result.flashcards || FB_CARDS[lv] || FB_CARDS.A2,
+    blanks:     result.blanks     || FB_BLANKS,
+    writing:    result.writing    || (FB_WRITING[lv]||FB_WRITING.A2),
+  };
+
+  setSt(p=>({...p, dailyContent:finalContent}));
+  setFlashSt(initFlashSt(finalContent.flashcards));
+  setGenerating(false);
 }
 
 /* ─────────────────────────────────────────────
    APP PRINCIPAL
 ───────────────────────────────────────────── */
 const DEF={screen:"welcome",lv:"A2",xp:0,streak:0,dias:[],done:[],testScore:0,
-  stats:{gramatica:0,gramaticaTotal:0,vocabulario:0,vocabularioTotal:0,escritura:0,escrituraTotal:0,sesiones:0}};
+  stats:{gramatica:0,gramaticaTotal:0,vocabulario:0,vocabularioTotal:0,escritura:0,escrituraTotal:0,sesiones:0},
+  dailyContent:null   // {date, lv, flashcards[], blanks[], writing[]}
+};
 
 export default function App(){
   const[auth,setAuth]=useState(null);
@@ -669,6 +781,7 @@ export default function App(){
   const firstRun=useRef(true);
   const saveTimer=useRef(null);
   const[flashSt,setFlashSt]=useState(()=>initFlashSt("A2"));
+  const[generating,setGenerating]=useState(false);
 
   // ── Restaurar sesión al arrancar ──────────────
   useEffect(()=>{
@@ -695,21 +808,23 @@ export default function App(){
   useEffect(()=>{
     if(!auth)return;
     setRdy(false);
-    supa.load(auth.token,auth.userId).then(data=>{
+    supa.load(auth.token,auth.userId).then(async data=>{
       const loaded=data?{...DEF,...data,stats:{...DEF.stats,...(data.stats||{})}}:DEF;
       setSt(loaded);
-      generarNuevas(CARDS[loaded.lv]||[], [], loaded.lv, setFlashSt, null);
       setRdy(true);firstRun.current=true;
+      // Generate daily content if needed
+      await refreshDailyContent(loaded, loaded.lv, setSt, setFlashSt, setGenerating);
     });
   },[auth]);
 
-  // ── Reiniciar flashcards al cambiar nivel ─────
+  // ── Regenerar al cambiar nivel ────────────────
   const prevLv=useRef(null);
   useEffect(()=>{
-    if(prevLv.current&&prevLv.current!==st.lv){
-      generarNuevas(CARDS[st.lv]||[], [], st.lv, setFlashSt, null);
+    if(!prevLv.current){prevLv.current=st.lv;return;}
+    if(prevLv.current!==st.lv){
+      prevLv.current=st.lv;
+      refreshDailyContent(st, st.lv, setSt, setFlashSt, setGenerating);
     }
-    prevLv.current=st.lv;
   },[st.lv]);
 
   useEffect(()=>{
@@ -750,6 +865,7 @@ export default function App(){
 
   if(!auth)return <AuthScreen onAuth={handleAuth}/>;
   if(!rdy)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><style>{`*{box-sizing:border-box;margin:0;padding:0}`}</style><p style={{color:C.mu,fontFamily:"sans-serif"}}>Cargando tu progreso…</p></div>);
+  // generating overlay shown as floating banner, not blocking
 
   const{screen,lv,xp,streak,dias,done,testScore,stats}=st;
   const all=LESSONS[lv]||[];
@@ -797,6 +913,10 @@ export default function App(){
         </div>
       </header>
 
+      {generating&&<div style={{background:"linear-gradient(90deg,#6366f1,#8b5cf6)",padding:"8px 16px",display:"flex",alignItems:"center",gap:8}}>
+        <span style={{fontSize:14}}>🤖</span>
+        <span style={{color:"#fff",fontSize:12,fontWeight:600}}>Preparando ejercicios del día con IA…</span>
+      </div>}
       <main style={{flex:1,padding:"14px 16px",overflowY:"auto"}}>
         {lesson?(
           <Leccion lesson={lesson} onBack={()=>setLesson(null)} onDone={l=>{up({done:[...new Set([...done,l.id])],xp:xp+l.xp});setLesson(null);}}/>
@@ -863,8 +983,9 @@ export default function App(){
         ):tab==="practice"?(
           <div style={{maxWidth:660,margin:"0 auto"}}>
             {!sub&&<>
-              <h2 style={{color:C.tx,fontSize:20,fontWeight:800,marginBottom:4}}>Ejercicios</h2>
-              <p style={{color:C.mu,fontSize:13,marginBottom:20}}>Refuerza lo aprendido. Explicaciones en español.</p>
+              <h2 style={{color:C.tx,fontSize:20,fontWeight:800,marginBottom:4}}>Ejercicios del día</h2>
+              <p style={{color:C.mu,fontSize:13,marginBottom:4}}>Generados hoy por IA · Adaptados a tu nivel {lv}</p>
+              {st.dailyContent?.date&&<p style={{color:C.vi,fontSize:11,fontWeight:600,marginBottom:16}}>🤖 Contenido del {new Date(st.dailyContent.date+"T12:00:00").toLocaleDateString("es",{{day:"numeric",month:"long"}})}</p>}
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
                 {[
                   {m:"flash",ic:"🃏",tt:"Flashcards",           ds:`${flashSt.deck.length} palabras · Progreso guardado · Nuevas palabras automáticas con IA`,co:C.vi},
@@ -881,8 +1002,8 @@ export default function App(){
             </>}
             {sub&&<button onClick={()=>setSub(null)} style={{background:"none",border:"none",color:C.in,cursor:"pointer",fontSize:13,marginBottom:18,padding:0}}>← Volver</button>}
             {sub==="flash"&&<Flash lv={lv} flashSt={flashSt} setFlashSt={setFlashSt} onXP={n=>up({xp:xp+n})}/>}
-            {sub==="blank"&&<Blanks lv={lv} onXP={n=>up({xp:xp+n*5})} onStats={addStat}/>}
-            {sub==="write"&&<Escritura lv={lv} onXP={n=>up({xp:xp+n*8})} onStats={addStat}/>}
+            {sub==="blank"&&<Blanks lv={lv} dailyBlanks={st.dailyContent?.blanks} onXP={n=>up({xp:xp+n*5})} onStats={addStat}/>}
+            {sub==="write"&&<Escritura lv={lv} dailyWriting={st.dailyContent?.writing} onXP={n=>up({xp:xp+n*8})} onStats={addStat}/>}
           </div>
         ):tab==="stats"?(
           <Stats statsData={stats}/>
