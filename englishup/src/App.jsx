@@ -217,11 +217,18 @@ function calcNivel(s) {
   return           {lv:"B2", et:"Intermedio-Alto",     co:"#8b5cf6", sg:"C1"};
 }
 
-// En App.jsx, busca la función claude() y cambia la URL:
-const r = await fetch("/.netlify/functions/claude", {
-  method:"POST", headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({system:sys, messages:msgs}),
-});
+async function claude(msgs, sys) {
+  try {
+    const r = await fetch("/.netlify/functions/claude", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({system:sys, messages:msgs}),
+    });
+    const d = await r.json();
+    return d.content?.map(b=>b.text||"").join("")||"(sin respuesta)";
+  } catch(e) {
+    return "Error de conexión. Intenta de nuevo.";
+  }
+}
 
 /* ─────────────────────────────────────────────
    ATOMS
@@ -483,7 +490,7 @@ Responde SOLO con un array JSON válido, sin texto adicional, sin bloques de có
 ]`;
 
   try {
-    const r = await fetch("/api/claude", {
+    const r = await fetch("/.netlify/functions/claude", {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({
         max_tokens: 3000,
