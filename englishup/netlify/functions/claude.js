@@ -1,5 +1,4 @@
 // netlify/functions/claude.js
-
 exports.handler = async function(event, context) {
   const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
@@ -10,13 +9,8 @@ exports.handler = async function(event, context) {
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers: corsHeaders, body: "" };
   }
-
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, headers: corsHeaders, body: JSON.stringify({ error: "Method not allowed" }) };
-  }
-
-  if (!event.body) {
-    return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: "Empty body" }) };
   }
 
   let body;
@@ -26,50 +20,36 @@ exports.handler = async function(event, context) {
     return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: "Parse failed" }) };
   }
 
-  if (!body.messages) {
-    return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: "No messages" }) };
-  }
-
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: "API key not configured" }) };
   }
 
-  // Convertir mensajes al formato de Gemini
-  // Gemini usa "user" y "model" (no "assistant")
-  const contents = body.messages.map(m => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.content }]
-  }));
-
-  // El system prompt va aparte en Gemini
-  const requestBody = {
-    contents: contents,
-    generationConfig: {
-      maxOutputTokens: body.max_tokens || 1200,
-      temperature: 0.7,
-    }
-  };
-
+  // Groq usa el mismo formato que OpenAI
+  const messages = [];
   if (body.system) {
-    requestBody.systemInstruction = {
-      parts: [{ text: body.system }]
-    };
+    messages.push({ role: "system", content: body.system });
   }
+  messages.push(...(body.messages || []));
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      }
-    );
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant", // gratis, rápido, muy capaz
+        max_tokens: body.max_tokens || 1200,
+        messages: messages,
+        temperature: 0.7,
+      }),
+    });
 
     const data = await response.json();
 
-    if (!response.ok || !data.candidates) {
+    if (!response.ok || !data.choices) {
       return {
         statusCode: 200,
         headers: corsHeaders,
@@ -77,8 +57,9 @@ exports.handler = async function(event, context) {
       };
     }
 
-    const text = data.candidates[0]?.content?.parts?.[0]?.text || "(sin respuesta)";
+    const text = data.choices[0]?.message?.content || "(sin respuesta)";
 
+    // Devolvemos en el mismo formato que usaba la app (compatible con Anthropic)
     return {
       statusCode: 200,
       headers: corsHeaders,
