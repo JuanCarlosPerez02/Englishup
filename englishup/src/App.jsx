@@ -1,27 +1,53 @@
 import { useState, useEffect, useRef } from "react";
 
 /* ─────────────────────────────────────────────
-   STORAGE — simple, sin closures complejos.
-   Usamos una ref para saber si ya cargamos.
+   SUPABASE — auth + guardado en la nube
 ───────────────────────────────────────────── */
-const STORAGE_KEY = "englishup:v5";
+const SUPA_URL = "https://ilcdiukubzujgfdaoacm.supabase.co";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlsY2RpdWt1Ynp1amdmZGFvYWNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMzIzMjUsImV4cCI6MjA4ODgwODMyNX0.DSvIQcmrH4cDDuL8naxlFAG-4m8ImA5iulopOsiZcI4";
 
-async function storageLoad() {
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    if (v) return JSON.parse(v);
-  } catch (_) {}
-  return null;
-}
+const supa = {
+  headers: { "Content-Type": "application/json", "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}` },
 
-async function storageSave(data) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    return true;
-  } catch (_) {
-    return false;
+  async signUp(email, password) {
+    const r = await fetch(`${SUPA_URL}/auth/v1/signup`, {
+      method: "POST", headers: this.headers,
+      body: JSON.stringify({ email, password })
+    });
+    return r.json();
+  },
+
+  async signIn(email, password) {
+    const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
+      method: "POST", headers: this.headers,
+      body: JSON.stringify({ email, password })
+    });
+    return r.json();
+  },
+
+  async signOut(token) {
+    await fetch(`${SUPA_URL}/auth/v1/logout`, {
+      method: "POST",
+      headers: { ...this.headers, "Authorization": `Bearer ${token}` }
+    });
+  },
+
+  async loadProgress(token, userId) {
+    const r = await fetch(`${SUPA_URL}/rest/v1/progress?id=eq.${userId}&select=data`, {
+      headers: { ...this.headers, "Authorization": `Bearer ${token}` }
+    });
+    const rows = await r.json();
+    return rows?.[0]?.data || null;
+  },
+
+  async saveProgress(token, userId, data) {
+    await fetch(`${SUPA_URL}/rest/v1/progress`, {
+      method: "POST",
+      headers: { ...this.headers, "Authorization": `Bearer ${token}`, "Prefer": "resolution=merge-duplicates" },
+      body: JSON.stringify({ id: userId, data, updated_at: new Date().toISOString() })
+    });
   }
-}
+};
 
 /* ─────────────────────────────────────────────
    DATOS
@@ -160,26 +186,28 @@ const CARDS = {
   ],
 };
 
-const BLANKS = {
-  A2:[
-    {s:"I ___ to the gym three times a week.", ops:["go","goes","went","going"], ans:0, exp:"Usamos 'go' (forma base) después de 'I' en presente simple. Con she/he/it añadimos -s → 'she goes'."},
-    {s:"She ___ already eaten lunch.",          ops:["have","has","had","is"],    ans:1, exp:"Present Perfect: usamos 'has' con she/he/it. Con I/you/we/they usamos 'have'."},
-    {s:"They ___ football yesterday.",          ops:["play","plays","played","playing"], ans:2, exp:"'Yesterday' indica pasado → Past Simple: 'played'. Palabra clave: yesterday."},
-    {s:"___ you help me with this, please?",   ops:["Can","Could","Would","Should"], ans:1, exp:"'Could' es más educado que 'can'. Úsalo al pedir un favor a alguien que no conoces bien."},
-  ],
-  B1:[
-    {s:"If I ___ you, I would apologise.",      ops:["am","was","were","be"],     ans:2, exp:"2º condicional: usamos 'were' para todas las personas en inglés formal. 'If I were you...' es la expresión fija."},
-    {s:"The package ___ delivered yesterday.",  ops:["was","were","had","is"],    ans:0, exp:"Voz pasiva en pasado: was/were + participio. Sujeto singular (the package) → 'was'."},
-    {s:"She suggested ___ a break.",            ops:["take","to take","taking","took"], ans:2, exp:"'Suggest' va seguido de gerundio (-ing). También: avoid, recommend, consider, enjoy + -ing."},
-    {s:"I've worked here ___ 2019.",            ops:["for","since","from","during"], ans:1, exp:"'Since' + punto concreto en el tiempo (2019). 'For' + duración (for 3 years)."},
-  ],
-  B2:[
-    {s:"___ have I seen such a problem.",       ops:["Ever","Rarely","Sometimes","Often"], ans:1, exp:"Inversión después de adverbios negativos: Never, Rarely, Seldom... El auxiliar va antes del sujeto."},
-    {s:"It is widely ___ that exercise helps.", ops:["believed","believing","believe","to believe"], ans:0, exp:"Pasiva impersonal: 'It is + participio + that...'. Muy común en inglés académico y periodístico."},
-    {s:"___ she finished, she went home.",      ops:["As soon as","Despite","Although","However"], ans:0, exp:"'As soon as' = en cuanto / tan pronto como. Dos acciones ocurren de forma inmediata una tras otra."},
-    {s:"The findings ___ further research.",    ops:["warrant","warrants","warranting","warranted"], ans:0, exp:"'Findings' es plural → verbo plural: 'warrant'. (Si fuera singular: 'the finding warrants...')"},
-  ],
-};
+const BLANKS_BASE = [
+  {s:"I ___ to the gym three times a week.",        ops:["go","goes","went","going"],              ans:0, exp:"Presente simple con 'I': usamos la forma base. Con she/he/it → 'she goes'.", tipo:"Gramática", nivel:"A2"},
+  {s:"She ___ already eaten lunch.",                 ops:["have","has","had","is"],                 ans:1, exp:"Present Perfect: 'has' con she/he/it. 'Have' con I/you/we/they.", tipo:"Gramática", nivel:"A2"},
+  {s:"They ___ football yesterday.",                 ops:["play","plays","played","playing"],       ans:2, exp:"'Yesterday' indica pasado → Past Simple: 'played'.", tipo:"Gramática", nivel:"A2"},
+  {s:"___ you help me with this, please?",           ops:["Can","Could","Would","Should"],          ans:1, exp:"'Could' es más educado que 'can'. Úsalo al pedir un favor.", tipo:"Gramática", nivel:"A2"},
+  {s:"I ___ TV when my phone rang.",                 ops:["watch","watched","was watching","am watching"], ans:2, exp:"Past Continuous: acción en progreso interrumpida. 'was/were + -ing'.", tipo:"Gramática", nivel:"A2"},
+  {s:"Can I have the ___ for my purchase?",          ops:["recipe","receipt","receive","record"],   ans:1, exp:"'Receipt' = recibo/ticket. No confundir con 'recipe' (receta).", tipo:"Vocabulario", nivel:"A2"},
+  {s:"Let me check my ___. I'm free at 3pm.",        ops:["schedule","school","scheme","scale"],    ans:0, exp:"'Schedule' = horario/agenda. Muy usado en inglés de negocios.", tipo:"Vocabulario", nivel:"A2"},
+  {s:"If I ___ you, I would apologise.",             ops:["am","was","were","be"],                  ans:2, exp:"2º condicional: usamos 'were' para todas las personas.", tipo:"Gramática", nivel:"B1"},
+  {s:"The package ___ delivered yesterday.",         ops:["was","were","had","is"],                 ans:0, exp:"Voz pasiva en pasado: was/were + participio. Singular → 'was'.", tipo:"Gramática", nivel:"B1"},
+  {s:"She suggested ___ a break.",                   ops:["take","to take","taking","took"],        ans:2, exp:"'Suggest' va seguido de gerundio (-ing).", tipo:"Gramática", nivel:"B1"},
+  {s:"I've worked here ___ 2019.",                   ops:["for","since","from","during"],           ans:1, exp:"'Since' + punto concreto. 'For' + duración (for 3 years).", tipo:"Gramática", nivel:"B1"},
+  {s:"He said he ___ tired and wanted to go home.",  ops:["is","was","were","be"],                  ans:1, exp:"Estilo indirecto: el verbo retrocede. 'is' → 'was'.", tipo:"Gramática", nivel:"B1"},
+  {s:"The meeting was ___. We'll reschedule it.",    ops:["called off","called up","called in","called on"], ans:0, exp:"'Call off' = cancelar.", tipo:"Vocabulario", nivel:"B1"},
+  {s:"I can't ___ why it stopped working.",          ops:["figure out","figure in","figure up","figure off"], ans:0, exp:"'Figure out' = entender/resolver algo.", tipo:"Vocabulario", nivel:"B1"},
+  {s:"___ have I seen such a problem.",              ops:["Ever","Rarely","Sometimes","Often"],     ans:1, exp:"Inversión después de adverbios negativos: Rarely, Never...", tipo:"Gramática", nivel:"B2"},
+  {s:"It is widely ___ that exercise helps.",        ops:["believed","believing","believe","to believe"], ans:0, exp:"Pasiva impersonal: 'It is + participio + that...'.", tipo:"Gramática", nivel:"B2"},
+  {s:"___ she finished, she went home.",             ops:["As soon as","Despite","Although","However"], ans:0, exp:"'As soon as' = en cuanto / tan pronto como.", tipo:"Gramática", nivel:"B2"},
+  {s:"The findings ___ further research.",           ops:["warrant","warrants","warranting","warranted"], ans:0, exp:"'Findings' es plural → verbo plural: 'warrant'.", tipo:"Vocabulario", nivel:"B2"},
+  {s:"Her ___ speech inspired the whole team.",      ops:["eloquent","elegant","elusive","elaborate"], ans:0, exp:"'Eloquent' = elocuente, fluido y persuasivo.", tipo:"Vocabulario", nivel:"B2"},
+  {s:"We need to ___ the risks before proceeding.",  ops:["mitigate","migrate","motivate","mediate"], ans:0, exp:"'Mitigate' = mitigar, reducir la gravedad de algo.", tipo:"Vocabulario", nivel:"B2"},
+];
 
 const WORDS = [
   {w:"Resilient",  ph:"/rɪˈzɪliənt/",  es:"Resistente; que se recupera rápido de las dificultades.",      ej:"She is incredibly resilient — nothing keeps her down.", niv:"B2"},
@@ -191,17 +219,8 @@ const WORDS = [
   {w:"Hesitant",   ph:"/ˈhɛzɪtənt/",   es:"Indeciso/a; que duda antes de actuar o hablar.",                ej:"She was hesitant to share her opinion at first.",            niv:"B1"},
 ];
 
-const SCEN = [
-  {id:"job",       ic:"💼", t:"Entrevista de trabajo",  d:"Practica responder preguntas típicas en inglés.",    niv:"B1-B2", p:"You are an English interviewer. The user is a Spanish speaker practicing for a job interview. Ask one question at a time. When they make a significant English error, correct it gently in Spanish in parentheses like (Corrección: di «I have worked» en lugar de «I worked»). Keep responses short. Start by greeting them and asking your first question."},
-  {id:"travel",    ic:"✈️", t:"En el aeropuerto",        d:"Practica el check-in y moverse por el aeropuerto.", niv:"A2-B1", p:"You are airport staff. The user is a Spanish speaker practicing English. Have a realistic airport conversation. When they make an English error, correct it gently in Spanish in parentheses. Start the scenario."},
-  {id:"social",    ic:"☕", t:"Charla casual",            d:"Habla sobre el día a día, aficiones y planes.",     niv:"A2-B1", p:"You are a friendly English-speaking colleague. Have natural small talk. When the user makes a significant error, gently note it in Spanish in parentheses. Be warm and encouraging."},
-  {id:"complaint", ic:"📞", t:"Hacer una reclamación",   d:"Aprende a quejarte de forma educada en inglés.",   niv:"B1-B2", p:"You are a customer service representative. The user practices making a formal complaint in English. Correct errors gently in Spanish in parentheses. Be professional and realistic."},
-  {id:"doctor",    ic:"🏥", t:"Visita al médico",         d:"Describe síntomas y entiende consejos médicos.",    niv:"A2-B1", p:"You are an English-speaking doctor. The user practices medical English. Correct significant errors gently in Spanish in parentheses. Start by asking what brings them in today."},
-  {id:"negotiate", ic:"🤝", t:"Negociación empresarial",  d:"Negocia condiciones en inglés formal.",             niv:"B2",    p:"You are a business partner in a negotiation. The user practices formal business English. Correct register or grammar mistakes gently in Spanish in parentheses. Start the negotiation."},
-];
-
 /* ─────────────────────────────────────────────
-   HELPERS
+   HELPERS / ATOMS
 ───────────────────────────────────────────── */
 const C = {
   bg:"#070d14", card:"#0f1923", c2:"#131f2e", bd:"#1e2a3a",
@@ -217,22 +236,6 @@ function calcNivel(s) {
   return           {lv:"B2", et:"Intermedio-Alto",     co:"#8b5cf6", sg:"C1"};
 }
 
-async function claude(msgs, sys) {
-  try {
-    const r = await fetch("/.netlify/functions/claude", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({system:sys, messages:msgs}),
-    });
-    const d = await r.json();
-    return d.content?.map(b=>b.text||"").join("")||"(sin respuesta)";
-  } catch(e) {
-    return "Error de conexión. Intenta de nuevo.";
-  }
-}
-
-/* ─────────────────────────────────────────────
-   ATOMS
-───────────────────────────────────────────── */
 function Pb({v,max,co=C.in,h=8}) {
   return <div style={{background:C.bd,borderRadius:h,height:h,overflow:"hidden"}}><div style={{width:`${Math.min(100,v/Math.max(max,1)*100)}%`,height:"100%",background:co,borderRadius:h,transition:"width .4s"}}/></div>;
 }
@@ -245,6 +248,92 @@ function Bt({ch,fn,co=C.in,dis=false,st={}}) {
 function Cd({children,st={},fn}) {
   const [hv,sHv]=useState(false);
   return <div onClick={fn} onMouseEnter={()=>fn&&sHv(true)} onMouseLeave={()=>fn&&sHv(false)} style={{background:C.card,border:`1px solid ${hv?C.in:C.bd}`,borderRadius:16,padding:"22px 24px",transition:"border .15s",cursor:fn?"pointer":"default",...st}}>{children}</div>;
+}
+function Inp({label,type="text",value,onChange,placeholder,error}) {
+  return (
+    <div style={{marginBottom:16}}>
+      {label && <label style={{display:"block",color:C.mu,fontSize:12,fontWeight:700,marginBottom:6,letterSpacing:.5}}>{label}</label>}
+      <input
+        type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+        style={{width:"100%",background:C.c2,border:`1px solid ${error?C.re:C.bd}`,borderRadius:10,padding:"12px 14px",color:C.tx,fontSize:14,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}
+      />
+      {error && <p style={{color:C.re,fontSize:12,marginTop:4}}>{error}</p>}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   PANTALLA DE LOGIN / REGISTRO
+───────────────────────────────────────────── */
+function AuthScreen({onAuth}) {
+  const [mode, setMode] = useState("login"); // "login" | "register"
+  const [email, setEmail] = useState("");
+  const [pass, setPass] = useState("");
+  const [pass2, setPass2] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [ok, setOk] = useState("");
+
+  async function submit() {
+    setError(""); setOk("");
+    if (!email || !pass) { setError("Rellena todos los campos."); return; }
+    if (mode === "register" && pass !== pass2) { setError("Las contraseñas no coinciden."); return; }
+    if (pass.length < 6) { setError("La contraseña debe tener al menos 6 caracteres."); return; }
+    setLoading(true);
+    try {
+      if (mode === "register") {
+        const res = await supa.signUp(email, pass);
+        if (res.error) { setError(res.error.message); }
+        else { setOk("¡Cuenta creada! Revisa tu email para confirmarla, luego inicia sesión."); setMode("login"); }
+      } else {
+        const res = await supa.signIn(email, pass);
+        if (res.error) { setError("Email o contraseña incorrectos."); }
+        else { onAuth({ token: res.access_token, userId: res.user.id, email: res.user.email }); }
+      }
+    } catch(e) { setError("Error de conexión. Intenta de nuevo."); }
+    setLoading(false);
+  }
+
+  return (
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"system-ui,sans-serif",padding:24}}>
+      <style>{`*{box-sizing:border-box;margin:0;padding:0}`}</style>
+      <div style={{width:"100%",maxWidth:420}}>
+        <div style={{textAlign:"center",marginBottom:32}}>
+          <div style={{fontSize:52,marginBottom:12}}>🇬🇧</div>
+          <h1 style={{color:C.tx,fontSize:28,fontWeight:900,letterSpacing:-1,marginBottom:6}}>EnglishUp</h1>
+          <p style={{color:C.mu,fontSize:14}}>De A2 a B2 · Tu progreso guardado en la nube</p>
+        </div>
+
+        <Cd>
+          <div style={{display:"flex",gap:0,marginBottom:24,background:C.c2,borderRadius:10,padding:4}}>
+            {["login","register"].map(m=>(
+              <button key={m} onClick={()=>{setMode(m);setError("");setOk("");}}
+                style={{flex:1,padding:"9px",background:mode===m?C.in:"transparent",color:mode===m?"#fff":C.mu,border:"none",borderRadius:8,fontWeight:700,fontSize:13,cursor:"pointer",transition:"all .15s"}}>
+                {m==="login"?"Iniciar sesión":"Crear cuenta"}
+              </button>
+            ))}
+          </div>
+
+          <Inp label="EMAIL" type="email" value={email} onChange={setEmail} placeholder="tu@email.com"/>
+          <Inp label="CONTRASEÑA" type="password" value={pass} onChange={setPass} placeholder="Mínimo 6 caracteres"/>
+          {mode==="register" && <Inp label="REPITE LA CONTRASEÑA" type="password" value={pass2} onChange={setPass2} placeholder="Repite la contraseña" error={pass2&&pass!==pass2?"Las contraseñas no coinciden":""}/>}
+
+          {error && <div style={{background:C.re+"15",border:`1px solid ${C.re}44`,borderRadius:10,padding:"10px 14px",marginBottom:14}}><p style={{color:C.re,fontSize:13}}>{error}</p></div>}
+          {ok    && <div style={{background:C.gr+"15",border:`1px solid ${C.gr}44`,borderRadius:10,padding:"10px 14px",marginBottom:14}}><p style={{color:C.gr,fontSize:13}}>{ok}</p></div>}
+
+          <Bt
+            ch={loading ? "…" : mode==="login" ? "Entrar →" : "Crear cuenta →"}
+            fn={submit} dis={loading}
+            st={{width:"100%",background:`linear-gradient(135deg,${C.in},${C.vi})`,padding:14,fontSize:15}}
+          />
+        </Cd>
+
+        <p style={{color:"#1e2a3a",fontSize:11,textAlign:"center",marginTop:16}}>
+          Tu progreso se guarda automáticamente en la nube ☁️
+        </p>
+      </div>
+    </div>
+  );
 }
 
 /* ─────────────────────────────────────────────
@@ -321,7 +410,7 @@ function Res({score,onOk}) {
             <div key={x.l}><div style={{color:x.c,fontSize:36,fontWeight:900}}>{x.v}</div><div style={{color:C.di,fontSize:12}}>{x.l}</div></div>
           ))}
         </div>
-        {[{ic:"💡",lb:"Recomendación",tx:cons[r.lv]},{ic:"🎯",lb:"Tu objetivo",tx:`Llegar a ${r.sg}. 15–20 minutos al día son suficientes para progresar de forma sostenida.`}].map(x=>(
+        {[{ic:"💡",lb:"Recomendación",tx:cons[r.lv]},{ic:"🎯",lb:"Tu objetivo",tx:`Llegar a ${r.sg}. 15–20 minutos al día son suficientes.`}].map(x=>(
           <div key={x.lb} style={{background:C.c2,borderRadius:12,padding:"12px 16px",textAlign:"left",marginBottom:10}}>
             <p style={{color:C.mu,fontSize:14,lineHeight:1.6}}>{x.ic} <strong style={{color:C.tx}}>{x.lb}:</strong> {x.tx}</p>
           </div>
@@ -423,108 +512,48 @@ function Flash({lv}) {
 }
 
 /* ─────────────────────────────────────────────
-   RELLENA EL HUECO — ADAPTATIVO CON IA
-   Tanda 1: 20 preguntas estáticas (mezcla de todos los niveles)
-   Tanda 2+: 20 preguntas generadas por IA adaptadas a tus errores
+   RELLENA EL HUECO — ADAPTATIVO
 ───────────────────────────────────────────── */
-
-// Pool estático ampliado de 20 preguntas base
-const BLANKS_BASE = [
-  // A2 Gramática
-  {s:"I ___ to the gym three times a week.",        ops:["go","goes","went","going"],              ans:0, exp:"Presente simple con 'I': usamos la forma base. Con she/he/it añadimos -s → 'she goes'.", tipo:"Gramática", nivel:"A2"},
-  {s:"She ___ already eaten lunch.",                 ops:["have","has","had","is"],                 ans:1, exp:"Present Perfect: 'has' con she/he/it. 'Have' con I/you/we/they.", tipo:"Gramática", nivel:"A2"},
-  {s:"They ___ football yesterday.",                 ops:["play","plays","played","playing"],       ans:2, exp:"'Yesterday' indica pasado → Past Simple: 'played'. Palabra clave: yesterday.", tipo:"Gramática", nivel:"A2"},
-  {s:"___ you help me with this, please?",           ops:["Can","Could","Would","Should"],          ans:1, exp:"'Could' es más educado que 'can'. Úsalo al pedir un favor a alguien que no conoces bien.", tipo:"Gramática", nivel:"A2"},
-  {s:"I ___ TV when my phone rang.",                 ops:["watch","watched","was watching","am watching"], ans:2, exp:"Past Continuous: acción en progreso interrumpida por otra. 'was/were + -ing'.", tipo:"Gramática", nivel:"A2"},
-  // A2 Vocabulario
-  {s:"Can I have the ___ for my purchase?",          ops:["recipe","receipt","receive","record"],   ans:1, exp:"'Receipt' (recibo/ticket) no confundir con 'recipe' (receta de cocina). Sonido: /rɪˈsiːt/", tipo:"Vocabulario", nivel:"A2"},
-  {s:"Let me check my ___. I'm free at 3pm.",        ops:["schedule","school","scheme","scale"],    ans:0, exp:"'Schedule' = horario/agenda. Es una de las palabras más usadas en inglés de negocios.", tipo:"Vocabulario", nivel:"A2"},
-  // B1 Gramática
-  {s:"If I ___ you, I would apologise.",             ops:["am","was","were","be"],                  ans:2, exp:"2º condicional: usamos 'were' para todas las personas. 'If I were you...' es la expresión fija.", tipo:"Gramática", nivel:"B1"},
-  {s:"The package ___ delivered yesterday.",         ops:["was","were","had","is"],                 ans:0, exp:"Voz pasiva en pasado: was/were + participio. Sujeto singular (the package) → 'was'.", tipo:"Gramática", nivel:"B1"},
-  {s:"She suggested ___ a break.",                   ops:["take","to take","taking","took"],        ans:2, exp:"'Suggest' va seguido de gerundio (-ing). También: avoid, recommend, consider, enjoy + -ing.", tipo:"Gramática", nivel:"B1"},
-  {s:"I've worked here ___ 2019.",                   ops:["for","since","from","during"],           ans:1, exp:"'Since' + punto concreto (2019). 'For' + duración (for 3 years).", tipo:"Gramática", nivel:"B1"},
-  {s:"He said he ___ tired and wanted to go home.",  ops:["is","was","were","be"],                  ans:1, exp:"Estilo indirecto: el verbo retrocede un tiempo. 'is' → 'was'. Regla: am/is→was, are→were.", tipo:"Gramática", nivel:"B1"},
-  // B1 Vocabulario
-  {s:"The meeting was ___. We'll reschedule it.",    ops:["called off","called up","called in","called on"], ans:0, exp:"'Call off' = cancelar. Phrasal verb muy común. 'Call up' = llamar por teléfono.", tipo:"Vocabulario", nivel:"B1"},
-  {s:"I can't ___ why it stopped working.",          ops:["figure out","figure in","figure up","figure off"], ans:0, exp:"'Figure out' = entender/resolver algo. Muy usado en inglés coloquial y profesional.", tipo:"Vocabulario", nivel:"B1"},
-  // B2 Gramática
-  {s:"___ have I seen such a problem.",              ops:["Ever","Rarely","Sometimes","Often"],     ans:1, exp:"Inversión después de adverbios negativos: Never, Rarely, Seldom... El auxiliar va antes del sujeto.", tipo:"Gramática", nivel:"B2"},
-  {s:"It is widely ___ that exercise helps.",        ops:["believed","believing","believe","to believe"], ans:0, exp:"Pasiva impersonal: 'It is + participio + that...'. Muy común en inglés académico y periodístico.", tipo:"Gramática", nivel:"B2"},
-  {s:"___ she finished, she went home.",             ops:["As soon as","Despite","Although","However"], ans:0, exp:"'As soon as' = en cuanto / tan pronto como. Dos acciones ocurren de forma inmediata.", tipo:"Gramática", nivel:"B2"},
-  {s:"The findings ___ further research.",           ops:["warrant","warrants","warranting","warranted"], ans:0, exp:"'Findings' es plural → verbo plural: 'warrant'. (Si fuera singular: 'the finding warrants...')", tipo:"Vocabulario", nivel:"B2"},
-  // B2 Vocabulario
-  {s:"Her ___ speech inspired the whole team.",      ops:["eloquent","elegant","elusive","elaborate"], ans:0, exp:"'Eloquent' = elocuente, fluido y persuasivo al hablar. Diferente a 'elegant' (elegante).", tipo:"Vocabulario", nivel:"B2"},
-  {s:"We need to ___ the risks before proceeding.",  ops:["mitigate","migrate","motivate","mediate"], ans:0, exp:"'Mitigate' = mitigar, reducir la gravedad de algo. Muy usado en textos académicos y empresariales.", tipo:"Vocabulario", nivel:"B2"},
-];
-
-// Genera preguntas adaptativas vía IA
 async function generarPreguntasIA(lv, errores, aciertos) {
   const errorDesc = errores.length > 0
     ? `El estudiante cometió errores en: ${errores.map(e=>`"${e.tipo} ${e.nivel}: ${e.frase}"`).join(", ")}.`
     : "El estudiante no tuvo errores notables en la tanda anterior.";
-  const aciertosDesc = aciertos.length > 0
-    ? `Acertó fácilmente: ${aciertos.slice(0,3).map(a=>`"${a.tipo} ${a.nivel}"`).join(", ")}.`
-    : "";
 
-  const prompt = `Eres un profesor de inglés experto. ${errorDesc} ${aciertosDesc}
+  const prompt = `Eres un profesor de inglés experto. ${errorDesc}
 Nivel del estudiante: ${lv}. Su idioma nativo es español.
-
-Genera exactamente 20 preguntas de tipo "rellena el hueco" en inglés, adaptadas a sus puntos débiles.
-- Si tuvo errores en Gramática A2, genera más preguntas de ese tipo con dificultad similar.
-- Si acertó todo en B2, genera preguntas más difíciles B2/C1.
-- Mezcla: Gramática y Vocabulario del nivel ${lv} y adyacentes.
-- Cada pregunta debe tener 4 opciones, solo una correcta.
-- La explicación SIEMPRE en español, clara y con el porqué.
-
-Responde SOLO con un array JSON válido, sin texto adicional, sin bloques de código:
-[
-  {
-    "s": "frase con ___ en el hueco",
-    "ops": ["opción1","opción2","opción3","opción4"],
-    "ans": 0,
-    "exp": "Explicación en español de por qué es correcta.",
-    "tipo": "Gramática|Vocabulario",
-    "nivel": "A2|B1|B2"
-  }
-]`;
+Genera exactamente 20 preguntas de tipo "rellena el hueco", adaptadas a sus puntos débiles.
+Responde SOLO con un array JSON válido, sin texto adicional:
+[{"s":"frase con ___ en el hueco","ops":["op1","op2","op3","op4"],"ans":0,"exp":"Explicación en español.","tipo":"Gramática","nivel":"A2"}]`;
 
   try {
     const r = await fetch("/.netlify/functions/claude", {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({
         max_tokens: 3000,
-        system: "Eres un generador de ejercicios de inglés. Responde ÚNICAMENTE con JSON válido, sin texto adicional ni bloques de código.",
+        system: "Eres un generador de ejercicios de inglés. Responde ÚNICAMENTE con JSON válido.",
         messages: [{role:"user", content: prompt}]
       })
     });
     const d = await r.json();
     const text = d.content?.map(b=>b.text||"").join("") || "";
-    // Limpiar posibles bloques de código
     const clean = text.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
     const parsed = JSON.parse(clean);
     if (Array.isArray(parsed) && parsed.length >= 10) return parsed.slice(0,20);
     return null;
-  } catch(e) {
-    return null;
-  }
+  } catch(e) { return null; }
 }
 
 function Blanks({lv, onXP}) {
-  const BATCH = 20;
-  // Estado de la tanda actual
   const [preguntas, setPreguntas] = useState(BLANKS_BASE);
-  const [tanda, setTanda] = useState(1); // qué tanda estamos
+  const [tanda, setTanda] = useState(1);
   const [cargandoIA, setCargandoIA] = useState(false);
   const [errorIA, setErrorIA] = useState(false);
-
-  // Estado de la sesión de preguntas
   const [i, si] = useState(0);
   const [sel, ss] = useState(null);
   const [conf, sc] = useState(false);
   const [score, sk] = useState(0);
   const [fin, sf] = useState(false);
-  const [historial, setHistorial] = useState([]); // {frase, tipo, nivel, correcto}
+  const [historial, setHistorial] = useState([]);
 
   const ex = preguntas;
   const e = ex[i];
@@ -539,279 +568,97 @@ function Blanks({lv, onXP}) {
   }
 
   function next() {
-    if (last) {
-      const finalScore = score + (sel === e.ans ? 1 : 0);
-      onXP(finalScore);
-      sf(true);
-    } else {
-      ss(null); sc(false); si(x => x + 1);
-    }
+    if (last) { const fs = score + (sel === e.ans ? 1 : 0); onXP(fs); sf(true); }
+    else { ss(null); sc(false); si(x => x + 1); }
   }
 
   async function siguienteTanda() {
-    setCargandoIA(true);
-    setErrorIA(false);
+    setCargandoIA(true); setErrorIA(false);
     sf(false); si(0); ss(null); sc(false); sk(0);
-
     const errores = historial.filter(h => !h.correcto);
     const aciertos = historial.filter(h => h.correcto);
     const nuevas = await generarPreguntasIA(lv, errores, aciertos);
-
-    if (nuevas) {
-      setPreguntas(nuevas);
-      setTanda(t => t + 1);
-      setHistorial([]);
-    } else {
-      setErrorIA(true);
-      // Fallback: mezcla aleatoria de las base
-      setPreguntas([...BLANKS_BASE].sort(() => Math.random() - 0.5));
-      setTanda(t => t + 1);
-      setHistorial([]);
-    }
+    if (nuevas) { setPreguntas(nuevas); }
+    else { setErrorIA(true); setPreguntas([...BLANKS_BASE].sort(() => Math.random() - 0.5)); }
+    setTanda(t => t + 1); setHistorial([]);
     setCargandoIA(false);
   }
 
-  function repetirTanda() {
-    si(0); ss(null); sc(false); sk(0); sf(false); setHistorial([]);
-  }
-
-  // Pantalla de carga IA
   if (cargandoIA) return (
     <div style={{textAlign:"center", padding:"60px 20px"}}>
       <div style={{fontSize:48, marginBottom:20}}>🤖</div>
-      <h3 style={{color:C.tx, fontSize:18, fontWeight:800, marginBottom:10}}>La IA está preparando tu siguiente tanda…</h3>
-      <p style={{color:C.mu, fontSize:14, marginBottom:24}}>Analizando tus respuestas para crear ejercicios personalizados.</p>
-      <div style={{display:"flex", justifyContent:"center", gap:8}}>
-        {[0,1,2].map(k => (
-          <div key={k} style={{
-            width:10, height:10, borderRadius:"50%", background:C.in,
-            animation:`pulse 1.2s ease-in-out ${k*0.3}s infinite`,
-          }}/>
-        ))}
-      </div>
-      <style>{`@keyframes pulse{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style>
+      <h3 style={{color:C.tx, fontSize:18, fontWeight:800, marginBottom:10}}>Preparando tu siguiente tanda…</h3>
+      <p style={{color:C.mu, fontSize:14}}>La IA analiza tus respuestas.</p>
+      <style>{`@keyframes pulse{0%,100%{opacity:.2}50%{opacity:1}}`}</style>
     </div>
   );
 
-  // Pantalla de fin de tanda
   if (fin) {
     const total = ex.length;
     const pct = Math.round(score / total * 100);
     const errores = historial.filter(h => !h.correcto);
     const tiposError = [...new Set(errores.map(e => `${e.tipo} ${e.nivel}`))];
-
     return (
       <div style={{maxWidth:540, margin:"0 auto", textAlign:"center"}}>
-        <div style={{fontSize:50, marginBottom:14}}>
-          {pct===100?"🏆":pct>=70?"🎉":pct>=50?"💪":"📚"}
-        </div>
-        <h3 style={{color:C.tx, fontSize:22, fontWeight:800, marginBottom:6}}>
-          Tanda {tanda} completada
-        </h3>
-        <p style={{color:C.mu, fontSize:14, marginBottom:24}}>
-          Resultado: <strong style={{color:C.in}}>{score}/{total}</strong> ({pct}%)
-        </p>
-
-        {/* Resumen de errores */}
+        <div style={{fontSize:50, marginBottom:14}}>{pct===100?"🏆":pct>=70?"🎉":pct>=50?"💪":"📚"}</div>
+        <h3 style={{color:C.tx, fontSize:22, fontWeight:800, marginBottom:6}}>Tanda {tanda} completada</h3>
+        <p style={{color:C.mu, fontSize:14, marginBottom:20}}>Resultado: <strong style={{color:C.in}}>{score}/{total}</strong> ({pct}%)</p>
         {errores.length > 0 && (
           <Cd st={{marginBottom:16, textAlign:"left"}}>
-            <p style={{color:C.re, fontSize:13, fontWeight:700, marginBottom:8}}>
-              ❌ Errores ({errores.length})
-            </p>
-            {errores.slice(0,5).map((err, k) => (
+            <p style={{color:C.re, fontSize:13, fontWeight:700, marginBottom:8}}>❌ Errores ({errores.length})</p>
+            {errores.slice(0,4).map((err, k) => (
               <div key={k} style={{background:C.c2, borderRadius:8, padding:"8px 12px", marginBottom:6}}>
-                <p style={{color:"#94a3b8", fontSize:12}}>{err.frase.replace("___","___")}</p>
-                <span style={{background:C.re+"22", color:C.re, fontSize:10, fontWeight:700, borderRadius:10, padding:"1px 7px"}}>{err.tipo} · {err.nivel}</span>
+                <p style={{color:"#94a3b8", fontSize:12}}>{err.frase}</p>
+                <span style={{background:C.re+"22",color:C.re,fontSize:10,fontWeight:700,borderRadius:10,padding:"1px 7px"}}>{err.tipo} · {err.nivel}</span>
               </div>
             ))}
-            {errores.length > 5 && <p style={{color:C.di, fontSize:12, marginTop:4}}>…y {errores.length-5} más</p>}
           </Cd>
         )}
-
         {tiposError.length > 0 && (
-          <div style={{background:"#1a1a2e", border:`1px solid ${C.vi}33`, borderRadius:12, padding:"12px 16px", marginBottom:20, textAlign:"left"}}>
-            <p style={{color:"#a78bfa", fontSize:13}}>
-              🎯 La siguiente tanda se enfocará en: <strong>{tiposError.join(", ")}</strong>
-            </p>
+          <div style={{background:"#1a1a2e",border:`1px solid ${C.vi}33`,borderRadius:12,padding:"12px 16px",marginBottom:20,textAlign:"left"}}>
+            <p style={{color:"#a78bfa",fontSize:13}}>🎯 Siguiente tanda enfocada en: <strong>{tiposError.join(", ")}</strong></p>
           </div>
         )}
-
         <div style={{display:"flex", flexDirection:"column", gap:10}}>
-          <Bt
-            ch={`🤖 Siguiente tanda adaptada por IA (Tanda ${tanda+1})`}
-            fn={siguienteTanda}
-            st={{width:"100%", background:`linear-gradient(135deg,${C.in},${C.vi})`, padding:16, fontSize:15}}
-          />
-          <Bt
-            ch="🔄 Repetir esta tanda"
-            fn={repetirTanda}
-            st={{width:"100%", background:C.card, color:C.mu, border:`1px solid ${C.bd}`}}
-          />
+          <Bt ch={`🤖 Siguiente tanda adaptada (Tanda ${tanda+1})`} fn={siguienteTanda} st={{width:"100%",background:`linear-gradient(135deg,${C.in},${C.vi})`,padding:16}}/>
+          <Bt ch="🔄 Repetir esta tanda" fn={()=>{si(0);ss(null);sc(false);sk(0);sf(false);setHistorial([]);}} st={{width:"100%",background:C.card,color:C.mu,border:`1px solid ${C.bd}`}}/>
         </div>
-
-        {errorIA && (
-          <p style={{color:C.am, fontSize:12, marginTop:12}}>
-            ⚠️ No se pudo conectar con la IA — se usaron preguntas del banco local.
-          </p>
-        )}
-
-        <p style={{color:C.di, fontSize:11, marginTop:14}}>
-          Tanda {tanda} · {BATCH} preguntas por tanda · La IA aprende de tus errores
-        </p>
+        {errorIA && <p style={{color:C.am,fontSize:12,marginTop:12}}>⚠️ Sin conexión con IA — preguntas del banco local.</p>}
       </div>
     );
   }
 
   if (!e) return null;
   const pts = e.s.split("___");
-  const corrects = historial.filter(h=>h.correcto).length;
-  const wrongs = historial.filter(h=>!h.correcto).length;
-
   return (
     <div style={{maxWidth:560, margin:"0 auto"}}>
       <div style={{display:"flex", alignItems:"center", gap:8, marginBottom:6}}>
         <h2 style={{color:C.tx, fontSize:18, fontWeight:800}}>Rellena el hueco</h2>
-        {tanda > 1 && (
-          <span style={{background:C.vi+"22", color:C.vi, border:`1px solid ${C.vi}44`, borderRadius:20, padding:"2px 10px", fontSize:11, fontWeight:700}}>
-            🤖 IA · Tanda {tanda}
-          </span>
-        )}
+        {tanda > 1 && <span style={{background:C.vi+"22",color:C.vi,border:`1px solid ${C.vi}44`,borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:700}}>🤖 IA · Tanda {tanda}</span>}
       </div>
-      <p style={{color:C.mu, fontSize:13, marginBottom:14}}>
-        Elige la opción correcta. Explicación en español.
-      </p>
-
-      {/* Progreso y marcador */}
-      <div style={{display:"flex", justifyContent:"space-between", marginBottom:6}}>
-        <span style={{color:C.mu, fontSize:12}}>Pregunta {i+1}/{ex.length}</span>
-        <div style={{display:"flex", gap:10}}>
-          <span style={{color:C.gr, fontSize:12, fontWeight:700}}>✓ {corrects}</span>
-          {wrongs > 0 && <span style={{color:C.re, fontSize:12, fontWeight:700}}>✗ {wrongs}</span>}
-        </div>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+        <span style={{color:C.mu,fontSize:12}}>Pregunta {i+1}/{ex.length}</span>
+        <div style={{display:"flex",gap:6}}><Bg text={e.tipo} co={e.tipo==="Gramática"?C.in:C.am}/><Bg text={e.nivel} co={e.nivel==="B2"?C.vi:e.nivel==="B1"?C.am:C.gr}/></div>
       </div>
       <Pb v={i} max={ex.length}/>
-
-      {/* Badges de tipo */}
-      <div style={{display:"flex", gap:6, marginTop:8, marginBottom:12}}>
-        <Bg text={e.tipo} co={e.tipo==="Gramática"?C.in:C.am}/>
-        <Bg text={e.nivel} co={e.nivel==="B2"?C.vi:e.nivel==="B1"?C.am:C.gr}/>
-      </div>
-
-      {/* Pregunta */}
-      <Cd st={{marginBottom:12}}>
-        <p style={{color:C.tx, fontSize:18, lineHeight:1.8, fontFamily:"Georgia,serif", textAlign:"center"}}>
-          {pts[0]}
-          <span style={{
-            display:"inline-block", minWidth:80,
-            borderBottom:`2px solid ${conf?(sel===e.ans?C.gr:C.re):C.in}`,
-            textAlign:"center",
-            color:conf?(sel===e.ans?C.gr:C.re):C.in,
-            fontWeight:700, padding:"0 8px"
-          }}>
-            {sel !== null ? e.ops[sel] : "___"}
-          </span>
-          {pts[1]}
+      <Cd st={{marginTop:14,marginBottom:12}}>
+        <p style={{color:C.tx,fontSize:18,lineHeight:1.8,fontFamily:"Georgia,serif",textAlign:"center"}}>
+          {pts[0]}<span style={{display:"inline-block",minWidth:80,borderBottom:`2px solid ${conf?(sel===e.ans?C.gr:C.re):C.in}`,textAlign:"center",color:conf?(sel===e.ans?C.gr:C.re):C.in,fontWeight:700,padding:"0 8px"}}>{sel!==null?e.ops[sel]:"___"}</span>{pts[1]}
         </p>
       </Cd>
-
-      {/* Opciones */}
-      <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12}}>
-        {e.ops.map((op,k) => {
-          let bg=C.card, bd=C.bd, co=C.mu;
-          if (sel===k && !conf) { bg="#1e3a5f"; bd=C.in; co=C.tx; }
-          if (conf && k===e.ans) { bg="#0d2e1f"; bd=C.gr; co=C.gr; }
-          if (conf && sel===k && k!==e.ans) { bg="#2e0d0d"; bd=C.re; co=C.re; }
-          return (
-            <div key={k} onClick={()=>!conf&&ss(k)}
-              style={{background:bg, border:`2px solid ${bd}`, borderRadius:10,
-                padding:"13px 14px", color:co, cursor:conf?"default":"pointer",
-                textAlign:"center", fontWeight:600, fontSize:14, transition:"all .12s"
-              }}
-            >{op}</div>
-          );
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+        {e.ops.map((op,k)=>{
+          let bg=C.card,bd=C.bd,co=C.mu;
+          if(sel===k&&!conf){bg="#1e3a5f";bd=C.in;co=C.tx;}
+          if(conf&&k===e.ans){bg="#0d2e1f";bd=C.gr;co=C.gr;}
+          if(conf&&sel===k&&k!==e.ans){bg="#2e0d0d";bd=C.re;co=C.re;}
+          return <div key={k} onClick={()=>!conf&&ss(k)} style={{background:bg,border:`2px solid ${bd}`,borderRadius:10,padding:"13px 14px",color:co,cursor:conf?"default":"pointer",textAlign:"center",fontWeight:600,fontSize:14,transition:"all .12s"}}>{op}</div>;
         })}
       </div>
-
-      {/* Explicación */}
-      {conf && (
-        <div style={{background:C.c2, border:`1px solid ${C.bd}`, borderRadius:12, padding:"12px 16px", marginBottom:12}}>
-          <p style={{color:C.mu, fontSize:13, lineHeight:1.7}}>
-            {sel===e.ans?"✅":"❌"} <strong style={{color:C.tx}}>Explicación:</strong>{" "}
-            <span style={{color:"#94a3b8"}}>{e.exp}</span>
-          </p>
-        </div>
-      )}
-
-      {!conf
-        ? <Bt ch="Confirmar" fn={confirm} dis={sel===null} st={{width:"100%"}}/>
-        : <Bt ch={last?"Ver resultado →":"Siguiente →"} fn={next} st={{width:"100%"}}/>
-      }
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   CONVERSACIÓN
-───────────────────────────────────────────── */
-function Conv() {
-  const [sc,setSc]=useState(null);
-  const [msgs,sm]=useState([]);
-  const [inp,si]=useState("");
-  const [load,sl]=useState(false);
-  const bot=useRef(null);
-  useEffect(()=>{bot.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
-
-  async function start(s){setSc(s);sl(true);const r=await claude([{role:"user",content:"Start the scenario now."}],s.p);sm([{role:"assistant",content:r}]);sl(false);}
-  async function send(){
-    if(!inp.trim()||load)return;
-    const um={role:"user",content:inp};
-    sm(p=>[...p,um]);si("");sl(true);
-    const r=await claude([...msgs,um],sc.p);
-    sm(p=>[...p,{role:"assistant",content:r}]);sl(false);
-  }
-
-  if(!sc)return(
-    <div>
-      <h2 style={{color:C.tx,fontSize:20,fontWeight:800,marginBottom:6}}>Conversación con IA</h2>
-      <p style={{color:C.mu,fontSize:14,marginBottom:6}}>La IA habla en inglés y corrige tus errores en español entre paréntesis.</p>
-      <div style={{background:"#1a1a2e",border:`1px solid ${C.vi}33`,borderRadius:12,padding:"11px 14px",marginBottom:20}}>
-        <p style={{color:"#a78bfa",fontSize:13}}>💡 Habla en inglés todo lo que puedas. Los errores se corrigen en español para que entiendas.</p>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-        {SCEN.map(s=><Cd key={s.id} fn={()=>start(s)}>
-          <div style={{fontSize:26,marginBottom:8}}>{s.ic}</div>
-          <h3 style={{color:C.tx,fontSize:14,fontWeight:700,marginBottom:4}}>{s.t}</h3>
-          <p style={{color:C.mu,fontSize:12,lineHeight:1.5,marginBottom:10}}>{s.d}</p>
-          <Bg text={s.niv} co={C.in}/>
-        </Cd>)}
-      </div>
-    </div>
-  );
-
-  return(
-    <div style={{maxWidth:660,margin:"0 auto",display:"flex",flexDirection:"column",height:"66vh"}}>
-      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-        <button onClick={()=>{setSc(null);sm([]);}} style={{background:"none",border:"none",color:C.in,cursor:"pointer",fontSize:13,padding:0}}>← Escenarios</button>
-        <span style={{color:C.bd}}>|</span>
-        <span>{sc.ic}</span>
-        <h3 style={{color:C.tx,fontSize:14,fontWeight:700}}>{sc.t}</h3>
-      </div>
-      <div style={{background:"#0a1520",border:`1px solid ${C.bd}`,borderRadius:10,padding:"8px 12px",marginBottom:8}}>
-        <p style={{color:C.di,fontSize:11}}>🇬🇧 La IA habla en inglés · Las correcciones aparecen en español entre paréntesis</p>
-      </div>
-      <div style={{flex:1,overflow:"auto",background:"#0a1520",border:`1px solid ${C.bd}`,borderRadius:14,padding:16,display:"flex",flexDirection:"column",gap:12}}>
-        {msgs.map((m,k)=>(
-          <div key={k} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
-            <div style={{maxWidth:"78%",background:m.role==="user"?C.in:C.c2,border:m.role!=="user"?`1px solid ${C.bd}`:"none",borderRadius:m.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",padding:"11px 14px",color:m.role==="user"?"#fff":"#cbd5e1",fontSize:13,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{m.content}</div>
-          </div>
-        ))}
-        {load&&<div style={{display:"flex"}}><div style={{background:C.c2,border:`1px solid ${C.bd}`,borderRadius:"16px 16px 16px 4px",padding:"11px 14px",color:C.di,fontSize:13}}>Escribiendo…</div></div>}
-        <div ref={bot}/>
-      </div>
-      <div style={{marginTop:8,display:"flex",gap:8}}>
-        <input value={inp} onChange={e=>si(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Escribe en inglés…" style={{flex:1,background:C.card,border:`1px solid ${C.bd}`,borderRadius:10,padding:"12px 14px",color:C.tx,fontSize:13,outline:"none",fontFamily:"inherit"}}/>
-        <Bt ch="Enviar" fn={send} dis={load}/>
-      </div>
+      {conf&&<div style={{background:C.c2,border:`1px solid ${C.bd}`,borderRadius:12,padding:"12px 16px",marginBottom:12}}>
+        <p style={{color:C.mu,fontSize:13,lineHeight:1.7}}>{sel===e.ans?"✅":"❌"} <strong style={{color:C.tx}}>Explicación:</strong> <span style={{color:"#94a3b8"}}>{e.exp}</span></p>
+      </div>}
+      {!conf?<Bt ch="Confirmar" fn={confirm} dis={sel===null} st={{width:"100%"}}/>:<Bt ch={last?"Ver resultado →":"Siguiente →"} fn={next} st={{width:"100%"}}/>}
     </div>
   );
 }
@@ -866,48 +713,62 @@ function Racha({dias}) {
 const DEF = {screen:"welcome",lv:"A2",xp:0,streak:0,dias:[],done:[],testScore:0};
 
 export default function App() {
-  const [st, setSt]   = useState(DEF);
+  const [auth, setAuth] = useState(null); // {token, userId, email}
+  const [st, setSt] = useState(DEF);
   const [rdy, setRdy] = useState(false);
   const [saving, setSaving] = useState(false);
   const firstRun = useRef(true);
   const saveTimer = useRef(null);
 
-  // ── Cargar al montar ──────────────────────
-  useEffect(()=>{
-    storageLoad().then(data=>{
-      if(data) setSt(data);
+  // ── Cargar progreso al hacer login ──────────
+  useEffect(() => {
+    if (!auth) return;
+    setRdy(false);
+    supa.loadProgress(auth.token, auth.userId).then(data => {
+      if (data) setSt(data);
+      else setSt(DEF);
       setRdy(true);
+      firstRun.current = true;
     });
-  },[]);
+  }, [auth]);
 
-  // ── Guardar cuando cambia st (después de cargar) ──
-  useEffect(()=>{
-    if(!rdy) return;
-    if(firstRun.current){ firstRun.current=false; return; }
+  // ── Guardar cuando cambia st ─────────────────
+  useEffect(() => {
+    if (!rdy || !auth) return;
+    if (firstRun.current) { firstRun.current = false; return; }
     clearTimeout(saveTimer.current);
     setSaving(true);
-    saveTimer.current=setTimeout(()=>{
-      storageSave(st).then(()=>setSaving(false));
-    },400);
-  },[st, rdy]);
+    saveTimer.current = setTimeout(() => {
+      supa.saveProgress(auth.token, auth.userId, st).then(() => setSaving(false));
+    }, 800);
+  }, [st, rdy]);
 
-  // ── Marcar hoy como activo ────────────────
-  useEffect(()=>{
-    if(!rdy) return;
-    const today=hoy();
-    if(st.dias.includes(today)) return;
-    const yest=new Date(); yest.setDate(yest.getDate()-1);
-    const hadYest=st.dias.includes(yest.toISOString().slice(0,10));
-    setSt(p=>({...p,dias:[...p.dias,today].slice(-30),streak:hadYest?p.streak+1:1}));
-  },[rdy]);
+  // ── Marcar hoy como activo ───────────────────
+  useEffect(() => {
+    if (!rdy) return;
+    const today = hoy();
+    if (st.dias.includes(today)) return;
+    const yest = new Date(); yest.setDate(yest.getDate()-1);
+    const hadYest = st.dias.includes(yest.toISOString().slice(0,10));
+    setSt(p => ({...p, dias:[...p.dias,today].slice(-30), streak:hadYest?p.streak+1:1}));
+  }, [rdy]);
 
-  const [tab,setTab]=useState("home");
-  const [lesson,setLesson]=useState(null);
-  const [sub,setSub]=useState(null);
+  const [tab, setTab] = useState("home");
+  const [lesson, setLesson] = useState(null);
+  const [sub, setSub] = useState(null);
 
-  function up(patch){ setSt(p=>({...p,...patch})); }
+  function up(patch) { setSt(p => ({...p,...patch})); }
 
-  if(!rdy) return(
+  async function logout() {
+    await supa.signOut(auth.token);
+    setAuth(null); setSt(DEF); setRdy(false); setTab("home");
+  }
+
+  // ── Sin login → pantalla de auth ────────────
+  if (!auth) return <AuthScreen onAuth={setAuth}/>;
+
+  // ── Cargando progreso ────────────────────────
+  if (!rdy) return (
     <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}`}</style>
       <p style={{color:C.mu,fontFamily:"sans-serif"}}>Cargando tu progreso…</p>
@@ -920,7 +781,7 @@ export default function App() {
   const nr=calcNivel(testScore);
 
   // ── Bienvenida ────────────────────────────
-  if(screen==="welcome") return(
+  if (screen==="welcome") return(
     <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"system-ui,sans-serif",padding:24}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}`}</style>
       <div style={{maxWidth:480,textAlign:"center"}}>
@@ -930,18 +791,19 @@ export default function App() {
           <span style={{background:`linear-gradient(135deg,${C.in},${C.vi})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>empieza aquí</span>
         </h1>
         <p style={{color:C.mu,fontSize:15,lineHeight:1.7,marginBottom:36}}>
-          De A2 a B2 con lecciones diarias, conversación con IA y ejercicios. <strong style={{color:C.tx}}>Todo explicado en español.</strong><br/>Tu progreso se guarda automáticamente.
+          De A2 a B2 con lecciones diarias y ejercicios adaptativos. <strong style={{color:C.tx}}>Todo explicado en español.</strong><br/>
+          Bienvenido/a, <strong style={{color:C.in}}>{auth.email}</strong> 👋
         </p>
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           <Bt ch="🎯 Hacer el test de nivel (recomendado)" fn={()=>up({screen:"test"})} st={{padding:16,fontSize:16,background:`linear-gradient(135deg,${C.in},${C.vi})`}}/>
           <Bt ch="Saltar — empezar en A2" fn={()=>up({screen:"app"})} st={{background:C.card,color:C.mu,border:`1px solid ${C.bd}`,fontSize:14}}/>
         </div>
-        <p style={{color:"#334155",fontSize:12,marginTop:16}}>20 preguntas · ~5 min · Progreso guardado automáticamente 💾</p>
+        <p style={{color:"#334155",fontSize:12,marginTop:16}}>20 preguntas · ~5 min · Progreso guardado en la nube ☁️</p>
       </div>
     </div>
   );
 
-  if(screen==="test") return(
+  if (screen==="test") return(
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"system-ui,sans-serif",padding:"36px 22px"}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}`}</style>
       <div style={{textAlign:"center",marginBottom:30}}>
@@ -952,7 +814,7 @@ export default function App() {
     </div>
   );
 
-  if(screen==="results") return(
+  if (screen==="results") return(
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"system-ui,sans-serif",padding:"36px 22px"}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}`}</style>
       <Res score={testScore} onOk={nlv=>up({lv:nlv,screen:"app"})}/>
@@ -960,7 +822,7 @@ export default function App() {
   );
 
   // ── App principal ─────────────────────────
-  const tabs=[{id:"home",ic:"🏠",lb:"Inicio"},{id:"lessons",ic:"📖",lb:"Lecciones"},{id:"practice",ic:"✏️",lb:"Ejercicios"},{id:"speak",ic:"🎤",lb:"Hablar"}];
+  const tabs=[{id:"home",ic:"🏠",lb:"Inicio"},{id:"lessons",ic:"📖",lb:"Lecciones"},{id:"practice",ic:"✏️",lb:"Ejercicios"}];
 
   return(
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"system-ui,sans-serif",display:"flex",flexDirection:"column"}}>
@@ -972,13 +834,14 @@ export default function App() {
           <span style={{fontSize:20}}>🇬🇧</span>
           <span style={{color:C.tx,fontWeight:900,fontSize:17,letterSpacing:-0.5}}>EnglishUp</span>
           <span style={{background:saving?"#f59e0b22":"#10b98122",color:saving?C.am:C.gr,border:`1px solid ${saving?C.am+"44":C.gr+"44"}`,borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700}}>
-            {saving?"GUARDANDO…":"✓ GUARDADO"}
+            {saving?"GUARDANDO…":"☁️ GUARDADO"}
           </span>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
           <span>🔥 <strong style={{color:"#f97316"}}>{streak}</strong></span>
           <span>⚡ <strong style={{color:C.am}}>{xp} XP</strong></span>
           <Bg text={lv} co={C.in}/>
+          <button onClick={logout} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:C.di,fontSize:11,padding:"4px 10px",cursor:"pointer"}}>Salir</button>
         </div>
       </header>
 
@@ -1011,10 +874,10 @@ export default function App() {
             <div style={{marginBottom:16}}><Palabra/></div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               {[
-                {ic:"📖",tt:"Lecciones de hoy",  ds:"Track "+lv,      tb:"lessons",  co:C.in},
-                {ic:"✏️",tt:"Ejercicios",          ds:"Flashcards y huecos", tb:"practice", co:C.am},
-                {ic:"🎤",tt:"Hablar con la IA",   ds:"Conversación real",   tb:"speak",    co:C.gr},
-                {ic:"🔄",tt:"Repetir el test",    ds:"Actualiza tu nivel",  tb:null,       co:C.vi,fn:()=>up({screen:"test"})},
+                {ic:"📖",tt:"Lecciones de hoy",  ds:"Track "+lv,           tb:"lessons", co:C.in},
+                {ic:"✏️",tt:"Ejercicios",          ds:"Flashcards y huecos",  tb:"practice",co:C.am},
+                {ic:"🔄",tt:"Repetir el test",    ds:"Actualiza tu nivel",   tb:null,      co:C.vi, fn:()=>up({screen:"test"})},
+                {ic:"☁️",tt:"Guardado en nube",   ds:auth.email,             tb:null,      co:C.gr, fn:()=>{}},
               ].map(x=>(
                 <Cd key={x.tt} fn={x.fn||(()=>{setTab(x.tb);setSub(null);})} st={{padding:"16px"}}>
                   <div style={{fontSize:24,marginBottom:6}}>{x.ic}</div>
@@ -1028,7 +891,7 @@ export default function App() {
         ):tab==="lessons"?(
           <div style={{maxWidth:660,margin:"0 auto"}}>
             <h2 style={{color:C.tx,fontSize:20,fontWeight:800,marginBottom:4}}>Lecciones — {lv}</h2>
-            <p style={{color:C.mu,fontSize:13,marginBottom:18}}>Explicaciones en español · Práctica en inglés · Se guarda automáticamente 💾</p>
+            <p style={{color:C.mu,fontSize:13,marginBottom:18}}>Explicaciones en español · Práctica en inglés · Guardado en la nube ☁️</p>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {all.map(l=>{
                 const dn=done.includes(l.id);
@@ -1067,8 +930,8 @@ export default function App() {
               <p style={{color:C.mu,fontSize:13,marginBottom:20}}>Refuerza lo aprendido. Explicaciones siempre en español.</p>
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
                 {[
-                  {m:"flash",ic:"🃏",tt:"Flashcards",     ds:`Repasa ${(CARDS[lv]||[]).length} palabras clave del nivel ${lv}. Definición en español.`,co:C.vi},
-                  {m:"blank",ic:"✏️",tt:"Rellena el hueco",ds:`20 ejercicios adaptativos. La IA aprende de tus errores para el siguiente bloque.`,         co:C.am},
+                  {m:"flash",ic:"🃏",tt:"Flashcards",     ds:`Repasa ${(CARDS[lv]||[]).length} palabras clave del nivel ${lv}.`,co:C.vi},
+                  {m:"blank",ic:"✏️",tt:"Rellena el hueco",ds:"20 ejercicios adaptativos. La IA aprende de tus errores.", co:C.am},
                 ].map(x=>(
                   <Cd key={x.m} fn={()=>setSub(x.m)} st={{display:"flex",gap:14,alignItems:"center"}}>
                     <span style={{fontSize:32}}>{x.ic}</span>
@@ -1084,8 +947,7 @@ export default function App() {
             {sub==="flash"&&<><button onClick={()=>setSub(null)} style={{background:"none",border:"none",color:C.in,cursor:"pointer",fontSize:13,marginBottom:18,padding:0}}>← Volver</button><Flash lv={lv}/></>}
             {sub==="blank"&&<><button onClick={()=>setSub(null)} style={{background:"none",border:"none",color:C.in,cursor:"pointer",fontSize:13,marginBottom:18,padding:0}}>← Volver</button><Blanks lv={lv} onXP={n=>up({xp:xp+n*5})}/></>}
           </div>
-
-        ):tab==="speak"?<Conv/>:null}
+        ):null}
       </main>
 
       {/* Nav */}
