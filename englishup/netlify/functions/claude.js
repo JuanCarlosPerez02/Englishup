@@ -1,5 +1,4 @@
 // netlify/functions/claude.js
-// Formato clásico CommonJS — máxima compatibilidad con Netlify
 
 exports.handler = async function(event, context) {
   const corsHeaders = {
@@ -8,7 +7,6 @@ exports.handler = async function(event, context) {
     "Content-Type": "application/json",
   };
 
-  // Preflight
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers: corsHeaders, body: "" };
   }
@@ -17,39 +15,58 @@ exports.handler = async function(event, context) {
     return { statusCode: 405, headers: corsHeaders, body: JSON.stringify({ error: "Method not allowed" }) };
   }
 
+  if (!event.body) {
+    return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: "Empty body" }) };
+  }
+
   let body;
   try {
     body = JSON.parse(event.body);
   } catch (e) {
-    return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: "Bad request" }) };
+    return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: "Parse failed" }) };
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!body.messages) {
+    return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: "No messages" }) };
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: "API key not configured" }) };
   }
 
+  // Construir mensajes: si hay system prompt, va primero como role "system"
+  const messages = body.system
+    ? [{ role: "system", content: body.system }, ...body.messages]
+    : body.messages;
+
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+        "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: "gpt-4o-mini",  // rápido, barato, equivalente a Haiku
         max_tokens: body.max_tokens || 1200,
-        system: body.system || "",
-        messages: body.messages,
+        messages: messages,
       }),
     });
 
     const data = await response.json();
+
+    // Traducir respuesta de OpenAI al formato que espera App.jsx
+    // App.jsx hace: d.content?.map(b=>b.text||"").join("")
+    const text = data.choices?.[0]?.message?.content || "";
+    const translated = {
+      content: [{ type: "text", text: text }]
+    };
+
     return {
       statusCode: response.status,
       headers: corsHeaders,
-      body: JSON.stringify(data),
+      body: JSON.stringify(translated),
     };
   } catch (err) {
     return {
