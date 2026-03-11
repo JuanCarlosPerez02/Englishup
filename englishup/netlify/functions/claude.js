@@ -30,51 +30,61 @@ exports.handler = async function(event, context) {
     return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: "No messages" }) };
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: "API key not configured" }) };
   }
 
-  // Construir mensajes: si hay system prompt, va primero como role "system"
-  const messages = body.system
-    ? [{ role: "system", content: body.system }, ...body.messages]
-    : body.messages;
+  // Convertir mensajes al formato de Gemini
+  // Gemini usa "user" y "model" (no "assistant")
+  const contents = body.messages.map(m => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }]
+  }));
+
+  // El system prompt va aparte en Gemini
+  const requestBody = {
+    contents: contents,
+    generationConfig: {
+      maxOutputTokens: body.max_tokens || 1200,
+      temperature: 0.7,
+    }
+  };
+
+  if (body.system) {
+    requestBody.systemInstruction = {
+      parts: [{ text: body.system }]
+    };
+  }
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",  // rápido, barato, equivalente a Haiku
-        max_tokens: body.max_tokens || 1200,
-        messages: messages,
-      }),
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      }
+    );
 
     const data = await response.json();
 
-    // Debug: devolver respuesta completa de OpenAI para diagnóstico
-    if (!data.choices || data.choices.length === 0) {
+    if (!response.ok || !data.candidates) {
       return {
         statusCode: 200,
         headers: corsHeaders,
-        body: JSON.stringify({ content: [{ type: "text", text: "DEBUG: " + JSON.stringify(data) }] }),
+        body: JSON.stringify({ content: [{ type: "text", text: "Error: " + JSON.stringify(data) }] }),
       };
     }
 
-    const text = data.choices[0].message?.content || "";
-    const translated = {
-      content: [{ type: "text", text: text }]
-    };
+    const text = data.candidates[0]?.content?.parts?.[0]?.text || "(sin respuesta)";
 
     return {
       statusCode: 200,
       headers: corsHeaders,
-      body: JSON.stringify(translated),
+      body: JSON.stringify({ content: [{ type: "text", text }] }),
     };
+
   } catch (err) {
     return {
       statusCode: 502,
