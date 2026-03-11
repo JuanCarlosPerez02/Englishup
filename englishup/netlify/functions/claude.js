@@ -56,15 +56,22 @@ exports.handler = async function(event, context) {
 
     const data = await response.json();
 
-    // Traducir respuesta de OpenAI al formato que espera App.jsx
-    // App.jsx hace: d.content?.map(b=>b.text||"").join("")
-    const text = data.choices?.[0]?.message?.content || "";
+    // Debug: devolver respuesta completa de OpenAI para diagnóstico
+    if (!data.choices || data.choices.length === 0) {
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ content: [{ type: "text", text: "DEBUG: " + JSON.stringify(data) }] }),
+      };
+    }
+
+    const text = data.choices[0].message?.content || "";
     const translated = {
       content: [{ type: "text", text: text }]
     };
 
     return {
-      statusCode: response.status,
+      statusCode: 200,
       headers: corsHeaders,
       body: JSON.stringify(translated),
     };
