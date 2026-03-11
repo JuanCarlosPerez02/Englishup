@@ -665,28 +665,49 @@ export default function App(){
   const[st,setSt]=useState(DEF);
   const[rdy,setRdy]=useState(false);
   const[saving,setSaving]=useState(false);
+  const[restoringSession,setRestoringSession]=useState(true);
   const firstRun=useRef(true);
   const saveTimer=useRef(null);
-
-  // Estado de flashcards en el padre — sobrevive a cambios de pestaña
   const[flashSt,setFlashSt]=useState(()=>initFlashSt("A2"));
 
+  // ── Restaurar sesión al arrancar ──────────────
+  useEffect(()=>{
+    const saved=localStorage.getItem("eu_auth");
+    if(!saved){setRestoringSession(false);return;}
+    try{
+      const parsed=JSON.parse(saved);
+      fetch(`${SUPA_URL}/auth/v1/user`,{headers:{...supa.h,"Authorization":`Bearer ${parsed.token}`}})
+        .then(r=>r.json())
+        .then(u=>{
+          if(u.id) setAuth(parsed);
+          else localStorage.removeItem("eu_auth");
+          setRestoringSession(false);
+        }).catch(()=>{localStorage.removeItem("eu_auth");setRestoringSession(false);});
+    }catch(e){localStorage.removeItem("eu_auth");setRestoringSession(false);}
+  },[]);
+
+  function handleAuth(authData){
+    localStorage.setItem("eu_auth",JSON.stringify(authData));
+    setAuth(authData);
+  }
+
+  // ── Cargar progreso al autenticarse ───────────
   useEffect(()=>{
     if(!auth)return;
     setRdy(false);
     supa.load(auth.token,auth.userId).then(data=>{
       const loaded=data?{...DEF,...data,stats:{...DEF.stats,...(data.stats||{})}}:DEF;
       setSt(loaded);
-      setFlashSt(initFlashSt(loaded.lv));
+      generarNuevas(CARDS[loaded.lv]||[], [], loaded.lv, setFlashSt, null);
       setRdy(true);firstRun.current=true;
     });
   },[auth]);
 
-  // Reiniciar flashcards cuando cambia el nivel
+  // ── Reiniciar flashcards al cambiar nivel ─────
   const prevLv=useRef(null);
   useEffect(()=>{
     if(prevLv.current&&prevLv.current!==st.lv){
-      setFlashSt(initFlashSt(st.lv));
+      generarNuevas(CARDS[st.lv]||[], [], st.lv, setFlashSt, null);
     }
     prevLv.current=st.lv;
   },[st.lv]);
@@ -721,9 +742,13 @@ export default function App(){
       return{...p,stats:s};
     });
   }
-  async function logout(){await supa.signOut(auth.token);setAuth(null);setSt(DEF);setRdy(false);setTab("home");}
+  async function logout(){
+    await supa.signOut(auth.token);
+    localStorage.removeItem("eu_auth");
+    setAuth(null);setSt(DEF);setRdy(false);setTab("home");
+  }
 
-  if(!auth)return <AuthScreen onAuth={setAuth}/>;
+  if(!auth)return <AuthScreen onAuth={handleAuth}/>;
   if(!rdy)return(<div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><style>{`*{box-sizing:border-box;margin:0;padding:0}`}</style><p style={{color:C.mu,fontFamily:"sans-serif"}}>Cargando tu progreso…</p></div>);
 
   const{screen,lv,xp,streak,dias,done,testScore,stats}=st;
