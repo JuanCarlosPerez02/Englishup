@@ -1,30 +1,31 @@
 // netlify/functions/claude.js
-// Netlify Functions v2 (ES Modules con export default)
 
-export default async (request, context) => {
-  // Solo aceptar POST
-  if (request.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
-  }
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Content-Type": "application/json",
+};
 
-  // Headers CORS para que el navegador no bloquee
-  const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Content-Type": "application/json",
-  };
-
-  // Preflight OPTIONS
+export default async (request) => {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  // Leer el body
+  if (request.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: corsHeaders });
+  }
+
+  // Leer body de forma robusta — soporta tanto text como json
   let body;
   try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ error: "Bad request" }), { status: 400, headers: corsHeaders });
+    const text = await request.text();
+    body = JSON.parse(text);
+  } catch (e) {
+    return new Response(JSON.stringify({ error: "Bad request", detail: e.message }), { status: 400, headers: corsHeaders });
+  }
+
+  if (!body || !body.messages) {
+    return new Response(JSON.stringify({ error: "Missing messages field" }), { status: 400, headers: corsHeaders });
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -43,13 +44,12 @@ export default async (request, context) => {
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
         max_tokens: body.max_tokens || 1200,
-        system: body.system,
+        system: body.system || "",
         messages: body.messages,
       }),
     });
 
     const data = await response.json();
-
     return new Response(JSON.stringify(data), {
       status: response.status,
       headers: corsHeaders,
