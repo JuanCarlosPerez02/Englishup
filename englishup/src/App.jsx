@@ -779,30 +779,34 @@ export default function App(){
   return(
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"system-ui,sans-serif",display:"flex",flexDirection:"column"}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#0a1520}::-webkit-scrollbar-thumb{background:#1e2a3a;border-radius:4px}`}</style>
-      <header style={{padding:"13px 20px",borderBottom:`1px solid ${C.card}`,display:"flex",alignItems:"center",justifyContent:"space-between",background:"#050b12"}}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:20}}>🇬🇧</span>
-          <span style={{color:C.tx,fontWeight:900,fontSize:17,letterSpacing:-0.5}}>EnglishUp</span>
-          <span style={{background:saving?"#f59e0b22":"#10b98122",color:saving?C.am:C.gr,border:`1px solid ${saving?C.am+"44":C.gr+"44"}`,borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700}}>{saving?"GUARDANDO…":"☁️ GUARDADO"}</span>
+      <header style={{padding:"10px 16px",borderBottom:`1px solid ${C.card}`,background:"#050b12"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:20}}>🇬🇧</span>
+            <span style={{color:C.tx,fontWeight:900,fontSize:16,letterSpacing:-0.5}}>EnglishUp</span>
+            <span style={{background:saving?"#f59e0b22":"#10b98122",color:saving?C.am:C.gr,border:`1px solid ${saving?C.am+"44":C.gr+"44"}`,borderRadius:20,padding:"1px 7px",fontSize:9,fontWeight:700}}>{saving?"💾":"☁️"}</span>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <Bg text={lv} co={C.in}/>
+            <button onClick={logout} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:C.di,fontSize:11,padding:"4px 10px",cursor:"pointer"}}>Salir</button>
+          </div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <span>🔥 <strong style={{color:"#f97316"}}>{streak}</strong></span>
-          <span>⚡ <strong style={{color:C.am}}>{xp} XP</strong></span>
-          <Bg text={lv} co={C.in}/>
-          <button onClick={logout} style={{background:"none",border:`1px solid ${C.bd}`,borderRadius:8,color:C.di,fontSize:11,padding:"4px 10px",cursor:"pointer"}}>Salir</button>
+        <div style={{display:"flex",alignItems:"center",gap:16,marginTop:6}}>
+          <span style={{fontSize:13}}>🔥 <strong style={{color:"#f97316"}}>{streak}</strong> <span style={{color:C.di,fontSize:11}}>días</span></span>
+          <span style={{fontSize:13}}>⚡ <strong style={{color:C.am}}>{xp}</strong> <span style={{color:C.di,fontSize:11}}>XP</span></span>
         </div>
       </header>
 
-      <main style={{flex:1,padding:"20px",overflowY:"auto"}}>
+      <main style={{flex:1,padding:"14px 16px",overflowY:"auto"}}>
         {lesson?(
           <Leccion lesson={lesson} onBack={()=>setLesson(null)} onDone={l=>{up({done:[...new Set([...done,l.id])],xp:xp+l.xp});setLesson(null);}}/>
         ):tab==="home"?(
           <div style={{maxWidth:700,margin:"0 auto"}}>
-            <h1 style={{color:C.tx,fontSize:22,fontWeight:800,marginBottom:4}}>¡Buenas! 👋</h1>
-            <p style={{color:C.mu,fontSize:14,marginBottom:20}}>Mantén tu racha — aprendamos algo hoy.</p>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+            <h1 style={{color:C.tx,fontSize:20,fontWeight:800,marginBottom:2}}>¡Buenas! 👋</h1>
+            <p style={{color:C.mu,fontSize:13,marginBottom:14}}>Mantén tu racha — aprendamos algo hoy.</p>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
               {[{l:"Días seguidos",v:streak,i:"🔥",c:"#f97316"},{l:"XP total",v:xp,i:"⚡",c:C.am},{l:"Lecciones",v:ndone,i:"✅",c:C.gr}].map(x=>(
-                <Cd key={x.l} st={{padding:"14px 16px"}}><div style={{fontSize:18,marginBottom:4}}>{x.i}</div><div style={{color:x.c,fontSize:22,fontWeight:900}}>{x.v}</div><div style={{color:C.di,fontSize:11,marginTop:2}}>{x.l}</div></Cd>
+                <Cd key={x.l} st={{padding:"12px 10px"}}><div style={{fontSize:16,marginBottom:2}}>{x.i}</div><div style={{color:x.c,fontSize:20,fontWeight:900}}>{x.v}</div><div style={{color:C.di,fontSize:10,marginTop:2}}>{x.l}</div></Cd>
               ))}
             </div>
             <Cd st={{marginBottom:16}}><Racha dias={dias}/></Cd>
@@ -885,10 +889,10 @@ export default function App(){
         ):null}
       </main>
 
-      <nav style={{borderTop:`1px solid ${C.card}`,display:"flex",background:"#050b12"}}>
+      <nav style={{borderTop:`1px solid ${C.card}`,display:"flex",background:"#050b12",paddingBottom:"env(safe-area-inset-bottom)"}}>
         {tabs.map(t=>(
-          <button key={t.id} onClick={()=>{setTab(t.id);setLesson(null);setSub(null);}} style={{flex:1,padding:"11px 8px 9px",background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-            <span style={{fontSize:17}}>{t.ic}</span>
+          <button key={t.id} onClick={()=>{setTab(t.id);setLesson(null);setSub(null);}} style={{flex:1,padding:"12px 8px 10px",background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+            <span style={{fontSize:19}}>{t.ic}</span>
             <span style={{fontSize:10,fontWeight:700,color:tab===t.id?C.in:"#334155"}}>{t.lb}</span>
           </button>
         ))}
