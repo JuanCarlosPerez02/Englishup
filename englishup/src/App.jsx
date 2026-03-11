@@ -131,13 +131,16 @@ async function callIA(system, userMsg, maxTokens=1200){
 
 function parseJSON(raw){
   try{
-    const clean=raw.replace(/```json
-?/g,"").replace(/```
-?/g,"").trim();
-    return JSON.parse(clean);
-  }catch(e){return null;}
-}
+    const clean = raw
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
 
+    return JSON.parse(clean);
+  }catch(e){
+    return null;
+  }
+}
 /* ─────────────────────────────────────────────
    GENERACIÓN DIARIA CON IA
    Genera flashcards + huecos + escritura de una
