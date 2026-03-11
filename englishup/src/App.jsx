@@ -5,7 +5,6 @@ import { useState, useEffect, useRef } from "react";
 ───────────────────────────────────────────── */
 const SUPA_URL = "https://ilcdiukubzujgfdaoacm.supabase.co";
 const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlsY2RpdWt1Ynp1amdmZGFvYWNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMzIzMjUsImV4cCI6MjA4ODgwODMyNX0.DSvIQcmrH4cDDuL8naxlFAG-4m8ImA5iulopOsiZcI4";
-
 const supa = {
   h: { "Content-Type":"application/json", "apikey":SUPA_KEY, "Authorization":`Bearer ${SUPA_KEY}` },
   async signUp(e,p){const r=await fetch(`${SUPA_URL}/auth/v1/signup`,{method:"POST",headers:this.h,body:JSON.stringify({email:e,password:p})});return r.json();},
@@ -333,94 +332,61 @@ function Leccion({lesson,onBack,onDone}){
 }
 
 /* ─────────────────────────────────────────────
-   FLASHCARDS — repaso inteligente + nuevas con IA
+   FLASHCARDS
+   El estado vive en el padre (flashSt) para que
+   sobreviva al cambiar de pestaña.
+   Al completar el mazo se generan 6 nuevas con IA
+   automáticamente sin necesidad de pulsar nada.
 ───────────────────────────────────────────── */
-function Flash({lv,onXP}){
-  const[deck,setDeck]=useState(CARDS[lv]||[]);
-  const[i,si]=useState(0);
-  const[fl,sf]=useState(false);
-  const[kn,sk]=useState([]);
-  const[un,su]=useState([]);
-  const[fase,setFase]=useState("normal"); // "normal" | "repaso" | "fin_repaso"
-  const[repasoQ,setRepasoQ]=useState([]);
-  const[riIdx,setRiIdx]=useState(0);
-  const[riKn,setRiKn]=useState([]);
-  const[riUn,setRiUn]=useState([]);
-  const[generando,setGenerando]=useState(false);
+function Flash({lv, flashSt, setFlashSt, onXP}){
+  const{deck,i,fl,kn,un,fase,repasoQ,riIdx,riKn,riUn,generando}=flashSt;
 
-  const done=kn.length+un.length===deck.length;
+  function upFlash(patch){setFlashSt(p=>({...p,...patch}));}
 
-  function mark(v){v?sk(p=>[...p,i]):su(p=>[...p,i]);sf(false);if(i<deck.length-1)si(x=>x+1);}
-
-  function iniciarRepaso(){
-    setRepasoQ(un.map(idx=>deck[idx]));
-    setFase("repaso");setRiIdx(0);sf(false);setRiKn([]);setRiUn([]);
+  function mark(v){
+    const newKn=v?[...kn,i]:kn;
+    const newUn=v?un:[...un,i];
+    const newI=i<deck.length-1?i+1:i;
+    const allDone=(newKn.length+newUn.length)===deck.length;
+    upFlash({kn:newKn,un:newUn,i:newI,fl:false});
+    // Al completar, auto-generar nuevas
+    if(allDone) setTimeout(()=>generarNuevas(deck,newUn,lv,upFlash,onXP),300);
   }
 
   function markRepaso(v){
-    v?setRiKn(p=>[...p,riIdx]):setRiUn(p=>[...p,riIdx]);
-    sf(false);
-    if(riIdx+1>=repasoQ.length)setFase("fin_repaso");
-    else setRiIdx(x=>x+1);
+    const newRiKn=v?[...riKn,riIdx]:riKn;
+    const newRiUn=v?riUn:[...riUn,riIdx];
+    const isDone=riIdx+1>=repasoQ.length;
+    upFlash({riKn:newRiKn,riUn:newRiUn,fl:false,...(isDone?{fase:"fin_repaso"}:{riIdx:riIdx+1})});
   }
-
-  async function generarNuevas(){
-    setGenerando(true);
-    const yaVistas=deck.map(c=>c.f).join(", ");
-    const resp=await callIA(
-      "Eres un generador de flashcards de inglés. Responde SOLO con JSON válido, sin texto adicional.",
-      `Genera 6 flashcards de vocabulario en inglés para nivel ${lv}, distintas a estas: ${yaVistas}.
-Responde SOLO con array JSON:
-[{"f":"palabra","b":"(tipo) Definición en español.\\n\\n'Ejemplo en inglés.'\\n→ Traducción al español."}]`,
-      900
-    );
-    try{
-      const clean=resp.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
-      const parsed=JSON.parse(clean);
-      if(Array.isArray(parsed)&&parsed.length>0){
-        setDeck(parsed);si(0);sf(false);sk([]);su([]);
-        setFase("normal");setRiIdx(0);setRiKn([]);setRiUn([]);
-        if(onXP)onXP(15);
-      }
-    }catch(e){}
-    setGenerando(false);
-  }
-
-  function resetAll(){si(0);sf(false);sk([]);su([]);setFase("normal");setRiIdx(0);setRiKn([]);setRiUn([]);setDeck(CARDS[lv]||[]);}
 
   if(generando)return(
     <div style={{textAlign:"center",padding:"60px 20px"}}>
       <div style={{fontSize:48,marginBottom:16}}>🤖</div>
-      <h3 style={{color:C.tx,fontSize:18,fontWeight:800,marginBottom:8}}>Generando nuevas palabras…</h3>
-      <p style={{color:C.mu,fontSize:14}}>La IA crea vocabulario nuevo adaptado a tu nivel.</p>
+      <h3 style={{color:C.tx,fontSize:18,fontWeight:800,marginBottom:8}}>Generando palabras nuevas…</h3>
+      <p style={{color:C.mu,fontSize:14}}>La IA crea vocabulario adaptado a tu nivel {lv}.</p>
     </div>
   );
 
-  // FIN del repaso
   if(fase==="fin_repaso")return(
     <div style={{maxWidth:520,margin:"0 auto",textAlign:"center"}}>
       <div style={{fontSize:44,marginBottom:14}}>{riUn.length===0?"🏆":"💪"}</div>
       <h3 style={{color:C.tx,fontSize:20,fontWeight:800,marginBottom:8}}>¡Repaso completado!</h3>
-      <p style={{color:C.mu,marginBottom:6}}>Dominaste: <strong style={{color:C.gr}}>{riKn.length}</strong> · Aún por aprender: <strong style={{color:C.re}}>{riUn.length}</strong></p>
-      <p style={{color:C.mu,fontSize:13,marginBottom:24}}>¿Listo para palabras nuevas?</p>
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        <Bt ch="🤖 Generar 6 palabras nuevas con IA" fn={generarNuevas} st={{width:"100%",background:`linear-gradient(135deg,${C.in},${C.vi})`,padding:14}}/>
-        <Bt ch="🔄 Repetir mazo desde el principio" fn={resetAll} st={{width:"100%",background:C.card,color:C.mu,border:`1px solid ${C.bd}`}}/>
-      </div>
+      <p style={{color:C.mu,marginBottom:6}}>Dominadas: <strong style={{color:C.gr}}>{riKn.length}</strong> · Por aprender: <strong style={{color:C.re}}>{riUn.length}</strong></p>
+      <p style={{color:C.mu,fontSize:13,marginBottom:24}}>Generando palabras nuevas automáticamente…</p>
     </div>
   );
 
-  // REPASO en curso
   if(fase==="repaso"){
-    const cr=repasoQ[riIdx];
+    const cr=repasoQ[riIdx]||repasoQ[0];
     return(
       <div style={{maxWidth:520,margin:"0 auto"}}>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
           <h2 style={{color:C.tx,fontSize:20,fontWeight:800}}>Repaso inteligente</h2>
           <Bg text={`${riIdx+1}/${repasoQ.length}`} co={C.am}/>
         </div>
-        <p style={{color:C.mu,fontSize:13,marginBottom:16}}>Estas son las palabras que fallaste. ¡A dominarlas!</p>
-        <div onClick={()=>sf(x=>!x)} style={{background:fl?"#1a1a2e":C.card,border:`2px solid ${fl?C.am:C.bd}`,borderRadius:18,minHeight:180,padding:"28px",cursor:"pointer",transition:"all .25s",textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",marginBottom:14}}>
+        <p style={{color:C.mu,fontSize:13,marginBottom:16}}>Estas son las palabras que fallaste.</p>
+        <div onClick={()=>upFlash({fl:!fl})} style={{background:fl?"#1a1a2e":C.card,border:`2px solid ${fl?C.am:C.bd}`,borderRadius:18,minHeight:180,padding:"28px",cursor:"pointer",transition:"all .25s",textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",marginBottom:14}}>
           {!fl?(<><Bg text="REPASAR" co={C.am}/><h2 style={{color:C.tx,fontSize:28,fontWeight:900,marginTop:12}}>{cr.f}</h2><p style={{color:C.di,fontSize:12,marginTop:8}}>toca para ver en español</p></>)
           :(<>{cr.b.split("\n\n").map((p,k)=><p key={k} style={{color:k===0?C.tx:"#a78bfa",fontSize:k===0?15:13,lineHeight:1.7,fontStyle:k>0?"italic":"normal",marginBottom:6,textAlign:"left",width:"100%"}}>{p}</p>)}</>)}
         </div>
@@ -432,23 +398,16 @@ Responde SOLO con array JSON:
     );
   }
 
-  // FIN del mazo normal
+  const done=(kn.length+un.length)===deck.length;
   if(done)return(
-    <div style={{maxWidth:520,margin:"0 auto",textAlign:"center"}}>
-      <div style={{fontSize:44,marginBottom:14}}>{kn.length===deck.length?"🏆":kn.length>=deck.length/2?"🎉":"💪"}</div>
-      <h3 style={{color:C.tx,fontSize:19,fontWeight:800,marginBottom:8}}>¡Mazo completado!</h3>
-      <p style={{color:C.mu,marginBottom:6}}>Sabías <strong style={{color:C.gr}}>{kn.length}</strong> de {deck.length} palabras.</p>
-      {un.length>0&&<p style={{color:C.am,fontSize:13,marginBottom:20}}>Tienes <strong>{un.length}</strong> palabras para repasar 🔁</p>}
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {un.length>0&&<Bt ch={`🔁 Repasar las ${un.length} que fallé`} fn={iniciarRepaso} st={{width:"100%",background:C.am,padding:14}}/>}
-        <Bt ch="🤖 Generar 6 palabras nuevas con IA" fn={generarNuevas} st={{width:"100%",background:`linear-gradient(135deg,${C.in},${C.vi})`,padding:14}}/>
-        <Bt ch="🔄 Repetir mazo" fn={resetAll} st={{width:"100%",background:C.card,color:C.mu,border:`1px solid ${C.bd}`}}/>
-      </div>
+    <div style={{maxWidth:520,margin:"0 auto",textAlign:"center",padding:"40px 20px"}}>
+      <div style={{fontSize:48,marginBottom:16}}>🤖</div>
+      <h3 style={{color:C.tx,fontSize:18,fontWeight:800,marginBottom:8}}>Preparando palabras nuevas…</h3>
+      <p style={{color:C.mu,fontSize:14}}>La IA genera vocabulario fresco adaptado a tu nivel.</p>
     </div>
   );
 
-  // MAZO NORMAL
-  const card=deck[i];
+  const card=deck[i]||deck[0];
   return(
     <div style={{maxWidth:520,margin:"0 auto"}}>
       <h2 style={{color:C.tx,fontSize:20,fontWeight:800,marginBottom:6}}>Flashcards</h2>
@@ -461,7 +420,7 @@ Responde SOLO con array JSON:
           </div>
         ))}
       </div>
-      <div onClick={()=>sf(x=>!x)} style={{background:fl?"#1a1a2e":C.card,border:`2px solid ${fl?C.vi:C.bd}`,borderRadius:18,minHeight:200,padding:"30px 28px",cursor:"pointer",transition:"all .25s",textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",marginBottom:14}}>
+      <div onClick={()=>upFlash({fl:!fl})} style={{background:fl?"#1a1a2e":C.card,border:`2px solid ${fl?C.vi:C.bd}`,borderRadius:18,minHeight:200,padding:"30px 28px",cursor:"pointer",transition:"all .25s",textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",marginBottom:14}}>
         {!fl?(<><Bg text={lv} co={C.vi}/><h2 style={{color:C.tx,fontSize:30,fontWeight:900,marginTop:12}}>{card.f}</h2><p style={{color:C.di,fontSize:12,marginTop:8}}>toca para ver en español</p></>)
         :(<>{card.b.split("\n\n").map((p,k)=><p key={k} style={{color:k===0?C.tx:"#a78bfa",fontSize:k===0?15:13,lineHeight:1.7,fontStyle:k>0?"italic":"normal",marginBottom:6,textAlign:"left",width:"100%"}}>{p}</p>)}</>)}
       </div>
@@ -474,6 +433,33 @@ Responde SOLO con array JSON:
       </div>
     </div>
   );
+}
+
+// Función externa para generar nuevas tarjetas con IA
+async function generarNuevas(currentDeck, unIndices, lv, upFlash, onXP){
+  upFlash({generando:true});
+  const yaVistas=currentDeck.map(c=>c.f).join(", ");
+  const resp=await callIA(
+    "Eres un generador de flashcards de inglés. Responde SOLO con JSON válido, sin texto adicional ni backticks.",
+    `Genera 6 flashcards de vocabulario en inglés para nivel ${lv}, distintas a estas ya vistas: ${yaVistas}.
+Responde ONLY con este array JSON (sin \`\`\`):
+[{"f":"palabra","b":"(tipo gramatical) Definición clara en español.\\n\\n'Ejemplo en inglés.'\\n→ Traducción al español."}]`,
+    900
+  );
+  let newDeck=null;
+  try{
+    const clean=resp.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
+    const parsed=JSON.parse(clean);
+    if(Array.isArray(parsed)&&parsed.length>0) newDeck=parsed;
+  }catch(e){}
+
+  if(!newDeck){
+    // Si la IA falla, mezclar el mazo original
+    newDeck=[...(CARDS[lv]||[])].sort(()=>Math.random()-.5);
+  }
+
+  upFlash({deck:newDeck,i:0,fl:false,kn:[],un:[],fase:"normal",repasoQ:[],riIdx:0,riKn:[],riUn:[],generando:false});
+  if(onXP) onXP(10);
 }
 
 /* ─────────────────────────────────────────────
@@ -504,18 +490,8 @@ function Blanks({lv,onXP,onStats}){
   const[score,sk]=useState(0);
   const[fin,sf]=useState(false);
   const[hist,setHist]=useState([]);
-
-  const e=preguntas[i];
-  const last=i===preguntas.length-1;
-
-  function confirm(){
-    if(sel===null)return;sc(true);
-    const ok=sel===e.ans;
-    if(ok)sk(s=>s+1);
-    const entry={frase:e.s,tipo:e.tipo,nivel:e.nivel,correcto:ok};
-    setHist(h=>[...h,entry]);
-    if(onStats)onStats(entry);
-  }
+  const e=preguntas[i];const last=i===preguntas.length-1;
+  function confirm(){if(sel===null)return;sc(true);const ok=sel===e.ans;if(ok)sk(s=>s+1);const entry={frase:e.s,tipo:e.tipo,nivel:e.nivel,correcto:ok};setHist(h=>[...h,entry]);if(onStats)onStats(entry);}
   function next(){if(last){onXP(score+(sel===e.ans?1:0));sf(true);}else{ss(null);sc(false);si(x=>x+1);}}
   async function siguienteTanda(){
     setCargando(true);sf(false);si(0);ss(null);sc(false);sk(0);
@@ -524,9 +500,7 @@ function Blanks({lv,onXP,onStats}){
     setPreguntas(nuevas||[...BLANKS_BASE].sort(()=>Math.random()-.5));
     setTanda(t=>t+1);setHist([]);setCargando(false);
   }
-
   if(cargando)return(<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:48,marginBottom:16}}>🤖</div><h3 style={{color:C.tx,fontSize:18,fontWeight:800,marginBottom:8}}>Preparando siguiente tanda…</h3><p style={{color:C.mu,fontSize:14}}>La IA analiza tus respuestas.</p></div>);
-
   if(fin){
     const total=preguntas.length,pct=Math.round(score/total*100);
     const errores=hist.filter(h=>!h.correcto);
@@ -545,7 +519,6 @@ function Blanks({lv,onXP,onStats}){
       </div>
     );
   }
-
   if(!e)return null;
   const pts=e.s.split("___");
   return(
@@ -580,97 +553,29 @@ function Blanks({lv,onXP,onStats}){
 }
 
 /* ─────────────────────────────────────────────
-   ESCRITURA — traduce al inglés con corrección IA
+   ESCRITURA
 ───────────────────────────────────────────── */
 function Escritura({lv,onXP,onStats}){
   const frases=FRASES_ESCRITURA[lv]||FRASES_ESCRITURA.A2;
-  const[i,si]=useState(0);
-  const[input,setInput]=useState("");
-  const[resultado,setResultado]=useState(null);
-  const[loading,setLoading]=useState(false);
-  const[done,setDone]=useState(false);
-  const[puntos,setPuntos]=useState(0);
-
-  const frase=frases[i];
-  const last=i===frases.length-1;
-
+  const[i,si]=useState(0);const[input,setInput]=useState("");const[resultado,setResultado]=useState(null);const[loading,setLoading]=useState(false);const[done,setDone]=useState(false);const[puntos,setPuntos]=useState(0);
+  const frase=frases[i];const last=i===frases.length-1;
   async function corregir(){
-    if(!input.trim())return;
-    setLoading(true);
-    const resp=await callIA(
-      "Eres un profesor de inglés. Corrige la traducción. Responde SOLO con JSON: {\"correcto\":true/false,\"nota\":1-10,\"correccion\":\"Versión correcta\",\"explicacion\":\"Explicación en español\",\"alternativas\":[\"Otra forma correcta\"]}",
-      `Frase en español: "${frase.es}"\nTraducción del estudiante: "${input}"\nNivel: ${lv}\nPista: "${frase.hint}"`,
-      600
-    );
-    try{
-      const clean=resp.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
-      const parsed=JSON.parse(clean);
-      setResultado(parsed);
-      const pts=parsed.correcto?3:parsed.nota>=6?1:0;
-      setPuntos(p=>p+pts);
-      if(onStats)onStats({tipo:"Escritura",nivel:lv,correcto:parsed.correcto});
-    }catch(e){
-      setResultado({correcto:false,nota:0,correccion:"",explicacion:"No se pudo conectar con la IA. Inténtalo de nuevo.",alternativas:[]});
-    }
+    if(!input.trim())return;setLoading(true);
+    const resp=await callIA("Eres un profesor de inglés. Corrige la traducción. Responde SOLO con JSON: {\"correcto\":true/false,\"nota\":1-10,\"correccion\":\"Versión correcta\",\"explicacion\":\"Explicación en español\",\"alternativas\":[\"Otra forma correcta\"]}",`Frase en español: "${frase.es}"\nTraducción del estudiante: "${input}"\nNivel: ${lv}\nPista: "${frase.hint}"`,600);
+    try{const clean=resp.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();const parsed=JSON.parse(clean);setResultado(parsed);const pts=parsed.correcto?3:parsed.nota>=6?1:0;setPuntos(p=>p+pts);if(onStats)onStats({tipo:"Escritura",nivel:lv,correcto:parsed.correcto});}
+    catch(e){setResultado({correcto:false,nota:0,correccion:"",explicacion:"No se pudo conectar con la IA. Inténtalo de nuevo.",alternativas:[]});}
     setLoading(false);
   }
-
-  function siguiente(){
-    if(last){setDone(true);if(onXP)onXP(puntos);}
-    else{si(x=>x+1);setInput("");setResultado(null);}
-  }
-
-  if(done)return(
-    <div style={{textAlign:"center",maxWidth:500,margin:"0 auto"}}>
-      <div style={{fontSize:50,marginBottom:14}}>{puntos>=frases.length*2?"🏆":puntos>=frases.length?"🎉":"💪"}</div>
-      <h3 style={{color:C.tx,fontSize:22,fontWeight:800,marginBottom:8}}>¡Ejercicio completado!</h3>
-      <p style={{color:C.mu,marginBottom:20}}>Puntos: <strong style={{color:C.in}}>{puntos}/{frases.length*3}</strong></p>
-      <Bt ch="Repetir" fn={()=>{si(0);setInput("");setResultado(null);setDone(false);setPuntos(0);}} st={{width:"100%"}}/>
-    </div>
-  );
-
+  function siguiente(){if(last){setDone(true);if(onXP)onXP(puntos);}else{si(x=>x+1);setInput("");setResultado(null);}}
+  if(done)return(<div style={{textAlign:"center",maxWidth:500,margin:"0 auto"}}><div style={{fontSize:50,marginBottom:14}}>{puntos>=frases.length*2?"🏆":puntos>=frases.length?"🎉":"💪"}</div><h3 style={{color:C.tx,fontSize:22,fontWeight:800,marginBottom:8}}>¡Ejercicio completado!</h3><p style={{color:C.mu,marginBottom:20}}>Puntos: <strong style={{color:C.in}}>{puntos}/{frases.length*3}</strong></p><Bt ch="Repetir" fn={()=>{si(0);setInput("");setResultado(null);setDone(false);setPuntos(0);}} st={{width:"100%"}}/></div>);
   return(
     <div style={{maxWidth:580,margin:"0 auto"}}>
-      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-        <h2 style={{color:C.tx,fontSize:18,fontWeight:800}}>Ejercicio de escritura</h2>
-        <Bg text="✍️ IA" co={C.vi}/>
-      </div>
-      <p style={{color:C.mu,fontSize:13,marginBottom:14}}>Traduce la frase al inglés. La IA corregirá tu respuesta.</p>
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-        <span style={{color:C.mu,fontSize:12}}>Frase {i+1}/{frases.length}</span>
-        <span style={{color:C.gr,fontSize:12,fontWeight:700}}>+{puntos} pts</span>
-      </div>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><h2 style={{color:C.tx,fontSize:18,fontWeight:800}}>Ejercicio de escritura</h2><Bg text="✍️ IA" co={C.vi}/></div>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{color:C.mu,fontSize:12}}>Frase {i+1}/{frases.length}</span><span style={{color:C.gr,fontSize:12,fontWeight:700}}>+{puntos} pts</span></div>
       <Pb v={i} max={frases.length}/>
-      <Cd st={{marginTop:14,marginBottom:14}}>
-        <p style={{color:C.di,fontSize:11,fontWeight:700,letterSpacing:1,marginBottom:10}}>TRADUCE AL INGLÉS</p>
-        <p style={{color:C.tx,fontSize:20,fontWeight:700,lineHeight:1.5,marginBottom:12}}>"{frase.es}"</p>
-        <div style={{background:C.c2,borderLeft:`3px solid ${C.am}`,borderRadius:"0 8px 8px 0",padding:"8px 12px"}}>
-          <p style={{color:C.am,fontSize:12}}>💡 Pista: {frase.hint}</p>
-        </div>
-      </Cd>
-      {!resultado?(
-        <>
-          <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder="Escribe tu traducción aquí…"
-            style={{width:"100%",background:C.c2,border:`1px solid ${C.bd}`,borderRadius:12,padding:"14px",color:C.tx,fontSize:14,outline:"none",fontFamily:"inherit",resize:"vertical",minHeight:90,marginBottom:12,boxSizing:"border-box"}}/>
-          <Bt ch={loading?"Corrigiendo…":"✓ Corregir con IA"} fn={corregir} dis={loading||!input.trim()} st={{width:"100%",background:`linear-gradient(135deg,${C.in},${C.vi})`}}/>
-        </>
-      ):(
-        <div>
-          <div style={{background:resultado.correcto?"#0d2e1f":resultado.nota>=6?"#1a1a0d":"#2e0d0d",border:`1px solid ${resultado.correcto?C.gr:resultado.nota>=6?C.am:C.re}44`,borderRadius:12,padding:"16px",marginBottom:12}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-              <span style={{fontSize:20}}>{resultado.correcto?"✅":resultado.nota>=6?"⚠️":"❌"}</span>
-              <strong style={{color:resultado.correcto?C.gr:resultado.nota>=6?C.am:C.re,fontSize:15}}>
-                {resultado.correcto?"¡Perfecto!":resultado.nota>=6?"Casi — pequeños errores":"Hay que mejorar"}
-              </strong>
-              <span style={{marginLeft:"auto",background:C.c2,borderRadius:8,padding:"2px 10px",color:C.tx,fontSize:13,fontWeight:700}}>{resultado.nota}/10</span>
-            </div>
-            {resultado.correccion&&<div style={{background:C.c2+"88",borderRadius:8,padding:"10px 12px",marginBottom:8}}><p style={{color:C.di,fontSize:11,fontWeight:700,marginBottom:4}}>VERSIÓN CORRECTA</p><p style={{color:"#e2e8f0",fontSize:14,fontFamily:"Georgia,serif"}}>{resultado.correccion}</p></div>}
-            <p style={{color:"#94a3b8",fontSize:13,lineHeight:1.7}}>{resultado.explicacion}</p>
-            {resultado.alternativas?.length>0&&<div style={{marginTop:10}}><p style={{color:C.di,fontSize:11,fontWeight:700,marginBottom:4}}>TAMBIÉN SE PUEDE DECIR</p>{resultado.alternativas.map((a,k)=><p key={k} style={{color:C.vi,fontSize:13,fontStyle:"italic"}}>• {a}</p>)}</div>}
-          </div>
-          <Bt ch={last?"Ver resultado final →":"Siguiente frase →"} fn={siguiente} st={{width:"100%"}}/>
-        </div>
-      )}
+      <Cd st={{marginTop:14,marginBottom:14}}><p style={{color:C.di,fontSize:11,fontWeight:700,letterSpacing:1,marginBottom:10}}>TRADUCE AL INGLÉS</p><p style={{color:C.tx,fontSize:20,fontWeight:700,lineHeight:1.5,marginBottom:12}}>"{frase.es}"</p><div style={{background:C.c2,borderLeft:`3px solid ${C.am}`,borderRadius:"0 8px 8px 0",padding:"8px 12px"}}><p style={{color:C.am,fontSize:12}}>💡 Pista: {frase.hint}</p></div></Cd>
+      {!resultado?(<><textarea value={input} onChange={e=>setInput(e.target.value)} placeholder="Escribe tu traducción aquí…" style={{width:"100%",background:C.c2,border:`1px solid ${C.bd}`,borderRadius:12,padding:"14px",color:C.tx,fontSize:14,outline:"none",fontFamily:"inherit",resize:"vertical",minHeight:90,marginBottom:12,boxSizing:"border-box"}}/><Bt ch={loading?"Corrigiendo…":"✓ Corregir con IA"} fn={corregir} dis={loading||!input.trim()} st={{width:"100%",background:`linear-gradient(135deg,${C.in},${C.vi})`}}/></>)
+      :(<div><div style={{background:resultado.correcto?"#0d2e1f":resultado.nota>=6?"#1a1a0d":"#2e0d0d",border:`1px solid ${resultado.correcto?C.gr:resultado.nota>=6?C.am:C.re}44`,borderRadius:12,padding:"16px",marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{fontSize:20}}>{resultado.correcto?"✅":resultado.nota>=6?"⚠️":"❌"}</span><strong style={{color:resultado.correcto?C.gr:resultado.nota>=6?C.am:C.re,fontSize:15}}>{resultado.correcto?"¡Perfecto!":resultado.nota>=6?"Casi — pequeños errores":"Hay que mejorar"}</strong><span style={{marginLeft:"auto",background:C.c2,borderRadius:8,padding:"2px 10px",color:C.tx,fontSize:13,fontWeight:700}}>{resultado.nota}/10</span></div>{resultado.correccion&&<div style={{background:C.c2+"88",borderRadius:8,padding:"10px 12px",marginBottom:8}}><p style={{color:C.di,fontSize:11,fontWeight:700,marginBottom:4}}>VERSIÓN CORRECTA</p><p style={{color:"#e2e8f0",fontSize:14,fontFamily:"Georgia,serif"}}>{resultado.correccion}</p></div>}<p style={{color:"#94a3b8",fontSize:13,lineHeight:1.7}}>{resultado.explicacion}</p>{resultado.alternativas?.length>0&&<div style={{marginTop:10}}><p style={{color:C.di,fontSize:11,fontWeight:700,marginBottom:4}}>TAMBIÉN SE PUEDE DECIR</p>{resultado.alternativas.map((a,k)=><p key={k} style={{color:C.vi,fontSize:13,fontStyle:"italic"}}>• {a}</p>)}</div>}</div><Bt ch={last?"Ver resultado final →":"Siguiente frase →"} fn={siguiente} st={{width:"100%"}}/></div>)}
     </div>
   );
 }
@@ -682,11 +587,7 @@ function Stats({statsData}){
   const{gramatica=0,gramaticaTotal=0,vocabulario=0,vocabularioTotal=0,escritura=0,escrituraTotal=0,sesiones=0}=statsData||{};
   const pct=(v,t)=>t>0?Math.round(v/t*100):0;
   const total=gramaticaTotal+vocabularioTotal+escrituraTotal;
-  const items=[
-    {label:"Gramática",   ok:gramatica,   total:gramaticaTotal,   co:C.in,ic:"📐"},
-    {label:"Vocabulario", ok:vocabulario, total:vocabularioTotal, co:C.am,ic:"📖"},
-    {label:"Escritura",   ok:escritura,   total:escrituraTotal,   co:C.vi,ic:"✍️"},
-  ];
+  const items=[{label:"Gramática",ok:gramatica,total:gramaticaTotal,co:C.in,ic:"📐"},{label:"Vocabulario",ok:vocabulario,total:vocabularioTotal,co:C.am,ic:"📖"},{label:"Escritura",ok:escritura,total:escrituraTotal,co:C.vi,ic:"✍️"}];
   return(
     <div style={{maxWidth:600,margin:"0 auto"}}>
       <h2 style={{color:C.tx,fontSize:20,fontWeight:800,marginBottom:4}}>Tus estadísticas</h2>
@@ -696,26 +597,15 @@ function Stats({statsData}){
           <Cd key={x.l} st={{padding:"16px",textAlign:"center"}}><div style={{fontSize:24,marginBottom:4}}>{x.i}</div><div style={{color:x.c,fontSize:28,fontWeight:900}}>{x.v}</div><div style={{color:C.di,fontSize:11,marginTop:2}}>{x.l}</div></Cd>
         ))}
       </div>
-      {total===0?(
-        <div style={{textAlign:"center",padding:"40px 20px",color:C.mu}}>
-          <div style={{fontSize:40,marginBottom:12}}>📊</div>
-          <p>Completa ejercicios para ver tus estadísticas aquí.</p>
-        </div>
-      ):(
+      {total===0?(<div style={{textAlign:"center",padding:"40px 20px",color:C.mu}}><div style={{fontSize:40,marginBottom:12}}>📊</div><p>Completa ejercicios para ver tus estadísticas aquí.</p></div>):(
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          {items.map(x=>{
-            const p=pct(x.ok,x.total);
-            return(
-              <Cd key={x.label} st={{padding:"18px 20px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:20}}>{x.ic}</span><strong style={{color:C.tx,fontSize:15}}>{x.label}</strong></div>
-                  <div style={{textAlign:"right"}}><span style={{color:x.co,fontWeight:900,fontSize:22}}>{p}%</span><p style={{color:C.di,fontSize:11}}>{x.ok}/{x.total} correctas</p></div>
-                </div>
-                <Pb v={x.ok} max={Math.max(x.total,1)} co={x.co}/>
-                <p style={{color:C.mu,fontSize:12,marginTop:8}}>{p>=80?"¡Excelente dominio! 🌟":p>=60?"Buen nivel, sigue practicando 💪":p>=40?"Va bien, hay margen de mejora 📈":"Necesita más práctica aquí 📚"}</p>
-              </Cd>
-            );
-          })}
+          {items.map(x=>{const p=pct(x.ok,x.total);return(
+            <Cd key={x.label} st={{padding:"18px 20px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:20}}>{x.ic}</span><strong style={{color:C.tx,fontSize:15}}>{x.label}</strong></div><div style={{textAlign:"right"}}><span style={{color:x.co,fontWeight:900,fontSize:22}}>{p}%</span><p style={{color:C.di,fontSize:11}}>{x.ok}/{x.total} correctas</p></div></div>
+              <Pb v={x.ok} max={Math.max(x.total,1)} co={x.co}/>
+              <p style={{color:C.mu,fontSize:12,marginTop:8}}>{p>=80?"¡Excelente dominio! 🌟":p>=60?"Buen nivel, sigue practicando 💪":p>=40?"Va bien, hay margen de mejora 📈":"Necesita más práctica aquí 📚"}</p>
+            </Cd>
+          );})}
         </div>
       )}
     </div>
@@ -758,6 +648,13 @@ function Racha({dias}){
 }
 
 /* ─────────────────────────────────────────────
+   ESTADO INICIAL DE FLASHCARDS
+───────────────────────────────────────────── */
+function initFlashSt(lv){
+  return {deck:CARDS[lv]||[],i:0,fl:false,kn:[],un:[],fase:"normal",repasoQ:[],riIdx:0,riKn:[],riUn:[],generando:false};
+}
+
+/* ─────────────────────────────────────────────
    APP PRINCIPAL
 ───────────────────────────────────────────── */
 const DEF={screen:"welcome",lv:"A2",xp:0,streak:0,dias:[],done:[],testScore:0,
@@ -771,14 +668,28 @@ export default function App(){
   const firstRun=useRef(true);
   const saveTimer=useRef(null);
 
+  // Estado de flashcards en el padre — sobrevive a cambios de pestaña
+  const[flashSt,setFlashSt]=useState(()=>initFlashSt("A2"));
+
   useEffect(()=>{
     if(!auth)return;
     setRdy(false);
     supa.load(auth.token,auth.userId).then(data=>{
-      setSt(data?{...DEF,...data,stats:{...DEF.stats,...(data.stats||{})}}:DEF);
+      const loaded=data?{...DEF,...data,stats:{...DEF.stats,...(data.stats||{})}}:DEF;
+      setSt(loaded);
+      setFlashSt(initFlashSt(loaded.lv));
       setRdy(true);firstRun.current=true;
     });
   },[auth]);
+
+  // Reiniciar flashcards cuando cambia el nivel
+  const prevLv=useRef(null);
+  useEffect(()=>{
+    if(prevLv.current&&prevLv.current!==st.lv){
+      setFlashSt(initFlashSt(st.lv));
+    }
+    prevLv.current=st.lv;
+  },[st.lv]);
 
   useEffect(()=>{
     if(!rdy||!auth)return;
@@ -801,7 +712,6 @@ export default function App(){
   const[sub,setSub]=useState(null);
 
   function up(patch){setSt(p=>({...p,...patch}));}
-
   function addStat(entry){
     setSt(p=>{
       const s={...DEF.stats,...(p.stats||{})};
@@ -811,7 +721,6 @@ export default function App(){
       return{...p,stats:s};
     });
   }
-
   async function logout(){await supa.signOut(auth.token);setAuth(null);setSt(DEF);setRdy(false);setTab("home");}
 
   if(!auth)return <AuthScreen onAuth={setAuth}/>;
@@ -833,7 +742,6 @@ export default function App(){
           <Bt ch="🎯 Hacer el test de nivel (recomendado)" fn={()=>up({screen:"test"})} st={{padding:16,fontSize:16,background:`linear-gradient(135deg,${C.in},${C.vi})`}}/>
           <Bt ch="Saltar — empezar en A2" fn={()=>up({screen:"app"})} st={{background:C.card,color:C.mu,border:`1px solid ${C.bd}`,fontSize:14}}/>
         </div>
-        <p style={{color:"#334155",fontSize:12,marginTop:16}}>20 preguntas · ~5 min · Progreso guardado en la nube ☁️</p>
       </div>
     </div>
   );
@@ -846,7 +754,6 @@ export default function App(){
   return(
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"system-ui,sans-serif",display:"flex",flexDirection:"column"}}>
       <style>{`*{box-sizing:border-box;margin:0;padding:0}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#0a1520}::-webkit-scrollbar-thumb{background:#1e2a3a;border-radius:4px}`}</style>
-
       <header style={{padding:"13px 20px",borderBottom:`1px solid ${C.card}`,display:"flex",alignItems:"center",justifyContent:"space-between",background:"#050b12"}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:20}}>🇬🇧</span>
@@ -864,7 +771,6 @@ export default function App(){
       <main style={{flex:1,padding:"20px",overflowY:"auto"}}>
         {lesson?(
           <Leccion lesson={lesson} onBack={()=>setLesson(null)} onDone={l=>{up({done:[...new Set([...done,l.id])],xp:xp+l.xp});setLesson(null);}}/>
-
         ):tab==="home"?(
           <div style={{maxWidth:700,margin:"0 auto"}}>
             <h1 style={{color:C.tx,fontSize:22,fontWeight:800,marginBottom:4}}>¡Buenas! 👋</h1>
@@ -895,7 +801,6 @@ export default function App(){
               ))}
             </div>
           </div>
-
         ):tab==="lessons"?(
           <div style={{maxWidth:660,margin:"0 auto"}}>
             <h2 style={{color:C.tx,fontSize:20,fontWeight:800,marginBottom:4}}>Lecciones — {lv}</h2>
@@ -926,7 +831,6 @@ export default function App(){
               </div>
             </div>
           </div>
-
         ):tab==="practice"?(
           <div style={{maxWidth:660,margin:"0 auto"}}>
             {!sub&&<>
@@ -934,9 +838,9 @@ export default function App(){
               <p style={{color:C.mu,fontSize:13,marginBottom:20}}>Refuerza lo aprendido. Explicaciones en español.</p>
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
                 {[
-                  {m:"flash",ic:"🃏",tt:"Flashcards",         ds:`${(CARDS[lv]||[]).length} palabras · Repaso inteligente · Genera nuevas con IA`,co:C.vi},
-                  {m:"blank",ic:"✏️",tt:"Rellena el hueco",    ds:"20 ejercicios adaptativos · La IA aprende de tus errores",co:C.am},
-                  {m:"write",ic:"✍️",tt:"Ejercicio de escritura",ds:"Traduce frases al inglés · Feedback con IA",co:C.gr},
+                  {m:"flash",ic:"🃏",tt:"Flashcards",           ds:`${flashSt.deck.length} palabras · Progreso guardado · Nuevas palabras automáticas con IA`,co:C.vi},
+                  {m:"blank",ic:"✏️",tt:"Rellena el hueco",      ds:"20 ejercicios adaptativos · La IA aprende de tus errores",co:C.am},
+                  {m:"write",ic:"✍️",tt:"Ejercicio de escritura", ds:"Traduce frases al inglés · Feedback con IA",co:C.gr},
                 ].map(x=>(
                   <Cd key={x.m} fn={()=>setSub(x.m)} st={{display:"flex",gap:14,alignItems:"center"}}>
                     <span style={{fontSize:32}}>{x.ic}</span>
@@ -947,11 +851,10 @@ export default function App(){
               </div>
             </>}
             {sub&&<button onClick={()=>setSub(null)} style={{background:"none",border:"none",color:C.in,cursor:"pointer",fontSize:13,marginBottom:18,padding:0}}>← Volver</button>}
-            {sub==="flash"&&<Flash lv={lv} onXP={n=>up({xp:xp+n})}/>}
+            {sub==="flash"&&<Flash lv={lv} flashSt={flashSt} setFlashSt={setFlashSt} onXP={n=>up({xp:xp+n})}/>}
             {sub==="blank"&&<Blanks lv={lv} onXP={n=>up({xp:xp+n*5})} onStats={addStat}/>}
             {sub==="write"&&<Escritura lv={lv} onXP={n=>up({xp:xp+n*8})} onStats={addStat}/>}
           </div>
-
         ):tab==="stats"?(
           <Stats statsData={stats}/>
         ):null}
